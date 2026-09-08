@@ -28,8 +28,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env*
+# env files (never commit secrets)
+.env
+.env.*
 !.env.example
 
 # migration tooling

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Loader2, X, Zap, Target } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { EntryRoute } from '@prisma/client'
@@ -20,22 +21,31 @@ export function NewRecordButton() {
   const [pending, startTransition] = useTransition()
 
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [selected, setSelected] = useState<RouteChoice>('STRATEGIC')
-
-  // Close on Escape
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
-  // Close on backdrop click
-  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget) setOpen(false)
+  function closeModal() {
+    if (pending) return
+    setOpen(false)
   }
 
   function handleContinue() {
@@ -84,21 +94,25 @@ export function NewRecordButton() {
         {pending ? t('creating') : `+ ${t('newRecord')}`}
       </button>
 
-      {/* Modal overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-          onClick={handleBackdrop}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="entry-route-title"
-        >
-          <div
-            ref={dialogRef}
-            className="w-full max-w-lg rounded-2xl border border-border bg-white shadow-xl"
-          >
+      {mounted &&
+        open &&
+        createPortal(
+          <div className="fixed inset-0 z-200 flex items-center justify-center p-4 sm:p-6">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              aria-label={t('close')}
+              onClick={closeModal}
+            />
+            <div
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="entry-route-title"
+              className="relative z-10 flex max-h-[min(90vh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-xl"
+            >
             {/* Header */}
-            <div className="flex items-start justify-between border-b border-border px-6 py-5">
+            <div className="flex shrink-0 items-start justify-between border-b border-border px-6 py-5">
               <div>
                 <h2
                   id="entry-route-title"
@@ -112,7 +126,7 @@ export function NewRecordButton() {
               </div>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closeModal}
                 className="ml-4 rounded-lg p-1.5 text-text-muted hover:bg-diriyah-bg-alt"
                 aria-label={t('close')}
               >
@@ -121,7 +135,7 @@ export function NewRecordButton() {
             </div>
 
             {/* Route cards */}
-            <div className="grid gap-3 px-6 py-5 sm:grid-cols-2">
+            <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto px-6 py-5 sm:grid-cols-2">
               {/* STRATEGIC */}
               <button
                 type="button"
@@ -208,10 +222,10 @@ export function NewRecordButton() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closeModal}
                 className="btn h-10 border-border bg-white px-4 text-sm"
                 disabled={pending}
               >
@@ -234,9 +248,10 @@ export function NewRecordButton() {
                 {pending ? t('creating') : t('continueWith')}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   )
 }
