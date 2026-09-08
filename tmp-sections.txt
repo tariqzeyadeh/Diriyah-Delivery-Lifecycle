@@ -1,0 +1,285 @@
+﻿--- DEMAND by section ---
+\n[Identity]
+  demand_id | ID / String
+  demand_title | Text
+  demand_type | Enum
+  demand_category | Reference
+  demand_subcategory | Reference
+  requesting_department_id | Reference
+  requesting_location_entity | Multi Reference
+\n[Ownership]
+  requester_user_id | User Reference
+  business_owner_user_id | User Reference
+  executive_sponsor_user_id | User Reference
+\n[Routing]
+  strategic_classification | Enum
+  origin_channel | Enum
+\n[Strategic Alignment]
+  strategy_id | Reference
+  objective_ids | Multi Reference
+  kpi_ids | Multi Reference
+  strategic_contribution_statement | Long Text
+  ad_hoc_justification | Long Text
+  mandatory_driver | Enum
+\n[Problem]
+  problem_opportunity_statement | Long Text
+  current_state_description | Long Text
+  baseline_evidence | Repeatable Metric
+  do_nothing_impact | Long Text
+\n[Outcomes]
+  business_objectives | Repeatable Text
+  expected_outcomes | Repeatable Text
+  success_criteria | Repeatable Criterion
+  beneficiary_groups | Multi-select + Count
+  expected_volume | Repeatable Quantity
+\n[Scope]
+  scope_in | Long Text
+  scope_out | Long Text
+  high_level_deliverables | Repeatable Text
+\n[Requirements]
+  business_requirements | Repeatable Requirement
+  service_level_requirements | Repeatable Requirement
+  acceptance_criteria | Repeatable Criterion
+  integration_requirements | Repeatable Interface
+  data_requirements | Repeatable Data Object
+  reporting_requirements | Repeatable Requirement
+\n[Technology Assessment]
+  architecture_impact | Boolean
+  architecture_assessment_summary | Long Text
+  security_privacy_impact | Boolean
+  security_requirements | Long Text
+  data_governance_impact | Boolean
+  hosting_requirement | Enum + Text
+  continuity_criticality | Enum
+  recovery_time_objective | Duration
+  recovery_point_objective | Duration
+\n[Options]
+  options | Repeatable Child Entity
+  option_name | Text
+  option_description | Long Text
+  option_estimated_cost_sar | Currency
+  option_delivery_duration | Duration
+  option_benefits_score | Decimal
+  option_risk_score | Decimal
+  option_weighted_score | Decimal
+  preferred_option_id | Reference
+  preferred_option_rationale | Long Text
+\n[Benefits]
+  benefits | Repeatable Child Entity
+  benefit_type | Enum
+  benefit_description | Long Text
+  benefit_baseline | Decimal/Text
+  benefit_target | Decimal/Text
+  annual_financial_benefit_sar | Currency
+  benefit_realization_start | Date
+  benefit_owner_user_id | User Reference
+  benefit_kpi_id | Reference
+\n[Cost]
+  indicative_one_time_cost_sar | Currency
+  indicative_recurring_cost_sar | Currency
+  tco_sar | Currency
+  cost_estimate_basis | Enum + Text
+  estimate_confidence | Enum
+\n[Financial Appraisal]
+  financial_evaluation_years | Integer
+  discount_rate_pct | Percentage
+  npv_sar | Currency
+  irr_pct | Percentage
+  roi_pct | Percentage
+  payback_period_months | Decimal
+\n[Schedule]
+  requested_start_date | Date
+  required_by_date | Date
+  key_milestones | Repeatable Milestone
+\n[Priority]
+  urgency | Enum
+  business_impact | Enum
+  priority_score | Decimal
+\n[Delivery]
+  delivery_mode | Enum
+  resource_requirements | Repeatable Resource
+  operating_owner_unit_id | Reference
+  support_model | Long Text
+\n[Sourcing]
+  procurement_required | Boolean
+  indicative_sourcing_route | Enum
+  existing_contract_id | Reference
+\n[RAIDC]
+  raidc_items | Repeatable Child Entity
+\n[Stakeholders]
+  stakeholders | Repeatable Stakeholder
+\n[Validation]
+  business_owner_attestation | Boolean + Date
+  completeness_score_pct | Percentage
+  duplicate_check_result | Enum + References
+  budget_validation_decision | Enum
+  budget_validation_comments | Long Text
+\n--- PROCUREMENT sections ---
+\n[Plan Header]
+  procurement_plan_id | ID / String
+  budget_submission_id | Reference
+  procurement_plan_title | Text
+  procurement_cycle | Structured Period
+  strategy_id | Reference
+  procurement_plan_owner_user_id | User Reference
+  plan_start_date | Date
+  plan_end_date | Date
+  procurement_plan_status | Enum
+  procurement_plan_version | Integer
+  approved_funding_available_sar | Currency
+  planned_procurement_value_sar | Currency
+  procurement_item_count | Integer
+  item_type_mix | Structured Metric
+  capex_opex_mix | Structured Metric
+  plan_budget_reconciliation | Enum
+  release_authorization_status | Enum
+\n[Identity]
+  procurement_item_id | ID / String
+  procurement_plan_id | Reference
+  demand_id | Reference
+  budget_line_id | Reference
+  strategy_performance_links | Multi Reference
+\n[Definition]
+  procurement_item_title | Text
+  procurement_scope | Long Text
+  procurement_item_type | Enum
+  procurement_category | Reference
+\n[Quantity]
+  quantity | Decimal
+  unit_of_measure | Enum/Text
+\n[Value]
+  approved_budget_sar | Currency
+  planned_value_sar | Currency
+  transaction_currency | Enum
+  funding_dimensions | Structured Reference
+\n[Sourcing]
+  procurement_method | Enum
+  contract_type | Enum
+  competition_type | Enum
+  single_source_justification | Long Text
+  existing_contract_id | Reference
+  vendor_id | Reference
+  candidate_supplier_count | Integer
+  evaluation_method | Structured Rule
+\n[Schedule]
+  planned_pr_submission_date | Date
+  planned_sourcing_start_date | Date
+  planned_award_date | Date
+  planned_commitment_date | Date
+  planned_delivery_start_date | Date
+  planned_completion_date | Date
+  planned_lead_time_days | Integer
+\n[Ownership]
+  procurement_owner_user_id | User Reference
+  business_technical_contact_id | User Reference
+  commercial_reviewer_user_id | User Reference
+\n[Readiness]
+  scope_ready | Boolean
+  budget_ready | Boolean
+  requirements_ready | Boolean
+  reviews_complete | Boolean
+  procurement_readiness_status | Enum
+\n[Execution]
+  procurement_stage | Enum
+  procurement_status | Enum
+  procurement_progress_pct | Percentage
+  actual_commitment_sar | Currency
+  accepted_value_sar | Currency
+  forecast_completion_date | Date
+  schedule_variance_days | Integer
+  value_variance_sar | Currency
+\n[Outcome]
+  procurement_outcome_type | Enum
+  project_registration_required | Boolean
+  pmo_handoff_readiness | Enum
+  completion_evidence_ids | Multi Reference
+\n--- STATUS ---
+Canonical Status and Lookup Values |  |  |  |  |  |  | 
+Minimum workflow code set. Labels may be configured, but canonical codes and transition integrity should remain stable for integrations and Power BI. |  |  |  |  |  |  | 
+ |  |  |  |  |  |  | 
+Lookup Group | Code | Display Label | Sort Order | Terminal | Permitted Next Status / Stage | Maintained / Actioned By | Rule / Note
+Entry Route | STRATEGIC | Strategic | 10 | FALSE | PI-01 | Strategy & Governance | Requires strategy/objective/KPI/BSC
+Entry Route | ADHOC | Non-strategic / Ad hoc | 20 | FALSE | PI-04 | Business Team | Requires ad-hoc justification
+Strategy Status | DRAFT | Draft | 10 | FALSE | Submitted; Withdrawn | Strategy & Governance | Editable
+Strategy Status | SUBMITTED | Submitted for Approval | 20 | FALSE | Approved; Returned; Rejected | CTO | Locked
+Strategy Status | RETURNED | Returned for Revision | 30 | FALSE | Draft; Resubmitted; Withdrawn | Strategy & Governance | New version/revision
+Strategy Status | APPROVED | Approved Baseline | 40 | TRUE | Superseded; Archived | Workflow | Immutable baseline
+Strategy Status | REJECTED | Rejected / Closed | 50 | TRUE | None | CTO | Terminal; distinct from return
+Demand Status | DRAFT | Draft | 10 | FALSE | Submitted; Cancelled | Business Team | Editable
+Demand Status | SUBMITTED | Submitted | 20 | FALSE | Under Validation; Returned; Withdrawn | Workflow | Locked for requester
+Demand Status | UNDER_VALIDATION | Under Budget Validation | 30 | FALSE | Validated; Conditional; Returned; Not Fundable | Commercial & Budgeting | Findings tracked
+Demand Status | VALIDATED | Validated | 40 | FALSE | Included; Deferred; Cancelled | Commercial & Budgeting | Eligible for consolidation
+Demand Status | CONDITIONAL | Validated with Conditions | 45 | FALSE | Included; Returned; Deferred | Commercial & Budgeting | Conditions tracked
+Demand Status | RETURNED | Returned for Revision | 50 | FALSE | Draft; Resubmitted; Cancelled | Business Team | New version
+Demand Status | INCLUDED | Included in Budget | 60 | FALSE | Funded; Deferred; Removed by revision | Workflow | Mapped to budget line
+Demand Status | FUNDED | Budget Approved | 70 | TRUE | Procurement Planned; Cancelled by change | Workflow | Approved baseline
+Demand Status | DEFERRED | Deferred | 80 | TRUE | Reactivated in future cycle | Commercial & Budgeting/CTO | Reason required
+Demand Status | NOT_FUNDABLE | Not Fundable | 90 | TRUE | Reactivated by new cycle/version | Commercial & Budgeting | Reason required
+Demand Status | CANCELLED | Cancelled | 100 | TRUE | None | Business Owner | Reason required
+Budget Status | DRAFT | Draft | 10 | FALSE | Consolidating; Withdrawn | Commercial & Budgeting | Editable
+Budget Status | CONSOLIDATING | Consolidating | 20 | FALSE | Submitted; Draft | Commercial & Budgeting | Checks active
+Budget Status | SUBMITTED | Submitted for CTO Approval | 30 | FALSE | Approved; Conditional; Returned; Rejected | CTO | Locked
+Budget Status | RETURNED | Returned for Revision | 40 | FALSE | Draft; Resubmitted | Commercial & Budgeting | New version
+Budget Status | APPROVED | Approved Baseline | 50 | TRUE | Revised/Superseded | Workflow | Procurement authority
+Budget Status | APPROVED_COND | Approved with Conditions | 55 | TRUE | Conditions Cleared; Superseded | Workflow | Conditional release rules
+Budget Status | REJECTED | Rejected / Closed | 60 | TRUE | None | CTO | Terminal
+Procurement Stage | PLANNED | Planned | 10 | FALSE | PR Preparation; Cancelled | Commercial & Budgeting | Plan approved
+Procurement Stage | PR_PREP | PR Preparation | 20 | FALSE | PR Approval; Returned; Cancelled | Commercial & Budgeting | Scope/budget ready
+Procurement Stage | PR_APPROVAL | PR Approval | 30 | FALSE | Tender/RFx; Contract/PO; Returned | Workflow/SAP | Canonical mapping
+Procurement Stage | RFX | Tender / RFx | 40 | FALSE | Evaluation; Cancelled | Procurement | Competitive route
+Procurement Stage | EVALUATION | Evaluation | 50 | FALSE | Award Approval; No Award; Returned | Procurement | Weights/evidence complete
+Procurement Stage | AWARD | Award Approval | 60 | FALSE | Contract/PO; Returned; No Award | Procurement | Decision recorded
+Procurement Stage | COMMITMENT | Contract / PO | 70 | FALSE | Delivery; Cancelled | SAP/Procurement | Commitment created
+Procurement Stage | DELIVERY | Delivery / Mobilization | 80 | FALSE | Acceptance; Project Handoff; Cancelled | Commercial & Budgeting | Progress tracked
+Procurement Stage | ACCEPTANCE | Acceptance | 90 | FALSE | Completed; Project Handoff; Returned | Business Owner | Evidence required
+Procurement Stage | COMPLETED | Completed | 100 | TRUE | None | Workflow | Terminal
+Procurement Stage | CANCELLED | Cancelled | 110 | TRUE | None | Authorized owner | Reason/evidence required
+Procurement Health | NOT_STARTED | Not Started | 10 | FALSE | On Track; At Risk; On Hold; Cancelled | Owner | 
+Procurement Health | ON_TRACK | On Track | 20 | FALSE | At Risk; Delayed; On Hold; Completed | Owner/System | 
+Procurement Health | AT_RISK | At Risk | 30 | FALSE | On Track; Delayed; On Hold; Completed | Owner | Reason/action required
+Procurement Health | DELAYED | Delayed | 40 | FALSE | On Track; At Risk; On Hold; Completed | Owner/System | Positive variance; action required
+Procurement Health | ON_HOLD | On Hold | 50 | FALSE | On Track; Cancelled | Authorized owner | Reason/resume condition required
+Procurement Health | COMPLETED | Completed | 60 | TRUE | None | Workflow | Completion evidence required
+Procurement Health | CANCELLED | Cancelled | 70 | TRUE | None | Authorized owner | Cancellation evidence required
+PMO Handoff | NOT_APPLICABLE | Not Applicable | 10 | TRUE | None | System | Non-project outcome
+PMO Handoff | NOT_READY | Not Ready | 20 | FALSE | Ready; Cancelled | Commercial & Budgeting | Checklist incomplete
+PMO Handoff | READY | Ready | 30 | FALSE | Sent; Not Ready | Commercial & Budgeting | Checklist passes
+PMO Handoff | SENT | Sent to PMO | 40 | FALSE | Accepted; Returned | Workflow | PMO task created
+PMO Handoff | ACCEPTED | Accepted / Registered | 50 | TRUE | None | PMO | Project ID created
+PMO Handoff | RETURNED | Returned | 60 | FALSE | Not Ready; Ready; Sent | PMO | Comments required
+Approval Decision | PENDING | Pending | 10 | FALSE | Approved; Conditional; Returned; Rejected; Withdrawn | Approver/Workflow | 
+Approval Decision | APPROVED | Approved | 20 | TRUE | None | Approver | Record advances
+Approval Decision | APPROVED_COND | Approved with Conditions | 30 | TRUE | None | Approver | Conditions required
+Approval Decision | RETURNED | Returned for Revision | 40 | TRUE | None | Approver | Revision loop; comments required
+Approval Decision | REJECTED | Rejected / Closed | 50 | TRUE | None | Approver | Terminal; explicit authority
+Approval Decision | WITHDRAWN | Withdrawn | 60 | TRUE | None | Submitter/Workflow | Reason required
+RAG | GREEN | Green | 10 | FALSE | Any | System/controlled override | Default score >=90
+RAG | AMBER | Amber | 20 | FALSE | Any | System/controlled override | Default score 70ΓÇô89.99
+RAG | RED | Red | 30 | FALSE | Any | System/controlled override | Default score <70
+RAG | NOT_RATED | Not Rated | 40 | FALSE | Any | System | Insufficient validated data
+\n--- IDS ---
+Identifier and Entity Relationship Model |  |  |  |  |  |  |  | 
+All records retain the same Master Traceability ID. Child IDs preserve uniqueness, cardinality and clean Power BI relationships. |  |  |  |  |  |  |  | 
+ |  |  |  |  |  |  |  | 
+Entity | Prefix | Primary Key | Parent / Foreign Key | Cardinality | Generated By | ID Pattern | Version Rule | Relationship Note
+Master Trace | MTR | master_trace_id | None | 1 per originating route/case | System on process start | TECH-{YYYY}-{000001} | Immutable | Parent of every downstream record
+Strategy | STR | strategy_id | master_trace_id | 0..1 per strategic Master Trace | System | {MTR}-STR-01 | Versioned | Required only for strategic route
+Strategic Theme | THM | theme_id | strategy_id | 0..n per Strategy | System | {MTR}-THM-{00} | Versioned | Groups objectives
+Strategic Objective | OBJ | objective_id | strategy_id | 1..n per Strategy | System | {MTR}-OBJ-{00} | Versioned | Parent of KPI and contribution links
+KPI Definition | KPI | kpi_id | objective_id | 1..n per Objective | System | {MTR}-KPI-{00} | Versioned | Definition remains stable across reporting periods
+KPI Performance Update | KPU | kpi_update_id | kpi_id | 0..n per KPI | System | {KPI}-{YYYYMM} | Append-only after validation | One row per KPI/reporting period
+Balanced Scorecard | BSC | scorecard_id | strategy_id | 1..n per Strategy | System | {MTR}-BSC-{YYYYMM} | Snapshot/versioned | Aggregates objective and KPI scores
+Demand | DEM | demand_id | master_trace_id | 1..n per Master Trace | System | {MTR}-DEM-{00} | Versioned | May be strategic or non-strategic
+Demand Option | OPT | option_id | demand_id | 1..n per Demand | System | {DEM}-OPT-{00} | Versioned | Includes do-nothing option
+Demand Benefit | BEN | benefit_id | demand_id | 0..n per Demand | System | {DEM}-BEN-{00} | Versioned | Links to KPI where measurable
+Demand Risk/Dependency | DRD | demand_item_id | demand_id | 0..n per Demand | System | {DEM}-DRD-{00} | Versioned | Typed as risk, assumption, issue, constraint or dependency
+Budget Submission | BUD | budget_submission_id | master_trace_id / strategy_id | 1..n versions per cycle | System | {MTR}-BUD-{FY}-V{00} | Versioned | Header for consolidated budget
+Budget Line | BLN | budget_line_id | budget_submission_id + demand_id | 1..n per Budget | System | {BUD}-BLN-{000} | Versioned | Atomic funding and phasing record
+Budget Consolidation | CON | consolidation_id | budget_submission_id | 1 per submitted version | System | {BUD}-CON-01 | Versioned | Reconciliation and CTO decision pack
+Procurement Plan | PPL | procurement_plan_id | budget_submission_id | 1..n per approved Budget | System | {MTR}-PPL-{FY} | Versioned | Header for procurement items
+Procurement Item | PRI | procurement_item_id | procurement_plan_id + budget_line_id | 1..n per Plan | System | {PPL}-PRI-{000} | Versioned | May produce project, license, equipment or service
+Procurement Status Update | PSU | procurement_update_id | procurement_item_id | 0..n per Item | System | {PRI}-UPD-{000} | Append-only | Full milestone/status history
+Project Registration | PRJ | project_id | procurement_item_id + demand_id | 0..1 per project-producing Item | System | {MTR}-PRJ-{00} | Versioned | PMO registered project
+Approval Transaction | APR | approval_id | entity_type + entity_id + version | 0..n per approvable record | System | {EntityID}-APR-{00} | Append-only | Generic approval audit history
+Attachment | ATT | attachment_id | entity_type + entity_id | 0..n per Entity | System | {EntityID}-ATT-{00} | Append-only/versioned | Evidence and controlled documents
+Comment | COM | comment_id | entity_type + entity_id | 0..n per Entity | System | {EntityID}-COM-{000} | Append-only | Threaded discussion and return comments

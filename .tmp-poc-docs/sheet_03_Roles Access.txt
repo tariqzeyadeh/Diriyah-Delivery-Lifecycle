@@ -1,0 +1,15 @@
+# 03_Roles Access (14 rows)
+Roles, Responsibilities and Access Rules |  |  |  |  |  | 
+Minimum role-based access-control model. Named users and delegation rules are maintained in configuration, not hardcoded in workflow. |  |  |  |  |  | 
+Role | Primary Responsibility | Route / Applicability | Primary Records | Permitted Actions | Control Responsibility | Restriction / Segregation Rule
+Strategy & Governance | Own strategy, objectives, KPI framework and BSC | Strategic route | Strategy; Objectives; KPI Definition; Scorecard | Create/Edit/Submit | Validate KPI updates and scorecard narrative | Cannot approve own CTO gates
+Business Requester | Draft business need and provide evidence | Strategic and Ad hoc | Demand / Business Case | Create/Edit before submission | Respond to returns | Cannot validate budget or approve demand funding
+Business Owner | Accountable for demand, benefits and acceptance | Strategic and Ad hoc | Demand; Benefits; KPI contribution | Edit/Submit/Attest | Accept conditions and validate business content | Must be different from technical validator where segregation is required
+Commercial & Budgeting | Develop budget, validate demand cost and consolidate | All | Budget; Budget Lines; Consolidation; Procurement Plan | Create/Edit/Validate/Submit | Confirm funding and procurement readiness | Cannot make CTO approval decision
+CTO | Executive approval authority | All | Strategy Gate; Budget Gate | View/Approve/Return/Reject | Approve locked versions | No field editing during approval; comments mandatory for return/reject
+PMO | Validate and register project outputs | Project-producing items | Project Registration | Create/Edit/Validate/Register/Return | Confirm next-phase readiness | Cannot modify approved budget or procurement values
+Architecture Reviewer | Assess technical alignment | Conditional | Demand review | View/Comment/Endorse | Architecture finding | Required when architecture impact = Yes
+Information Security Reviewer | Assess security and privacy | Conditional | Demand review | View/Comment/Endorse | Security finding | Required when data/security impact = Yes
+Data Governance Reviewer | Assess data ownership/classification | Conditional | Demand review | View/Comment/Endorse | Data finding | Required when data created/changed/shared = Yes
+Platform Administrator | Configure codes, SLAs, roles and integrations | All | Configuration only | Admin | No business approval | Administrative activity is audited
+Power BI / Report Consumer | Read management and operational views | All | One-page report and drill-through | Read/Export subject to access | None | Row-level security by role and business unit

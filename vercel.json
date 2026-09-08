@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sla-monitor",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/health-rollup",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

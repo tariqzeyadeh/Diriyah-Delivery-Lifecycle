@@ -1,38 +1,53 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
+import { Inter } from 'next/font/google'
 import './globals.css'
-import { Providers } from '@/components/providers'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: 'Diriyah Delivery Lifecycle',
-  description: 'Diriyah project delivery lifecycle oversight and management.',
+  title: 'Diriyah Strategic Governance',
+  description:
+    'Diriyah top-down strategic governance platform — decision-making, accountability, and oversight.',
+  applicationName: 'Diriyah',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Diriyah',
+  },
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
-/** Prevents flash of wrong theme/language before React hydrates */
-const bootScript = `
-(function(){
-  try {
-    var t = localStorage.getItem('theme');
-    document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
-    var lang = localStorage.getItem('language');
-    if (lang !== 'ar' && lang !== 'en') lang = 'en';
-    document.documentElement.setAttribute('lang', lang);
-    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
-    document.documentElement.setAttribute('lang', 'en');
-    document.documentElement.setAttribute('dir', 'ltr');
-  }
-})();
-`
+export const viewport: Viewport = {
+  themeColor: '#7A4E2D',
+}
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+/**
+ * Next.js 16 requires `<html>` / `<body>` on the root layout.
+ * Locale `lang` / `dir` are applied by `LocaleDocumentAttributes` under `[locale]`.
+ */
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const headerLocale = (await headers()).get('x-next-intl-locale')
+  const locale = headerLocale === 'ar' ? 'ar' : 'en'
+
   return (
-    <html lang="en" dir="ltr" data-theme="light" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: bootScript }} />
-      </head>
-      <body className="antialiased bg-surface text-text">
-        <Providers>{children}</Providers>
+    <html
+      lang={locale}
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      data-theme="light"
+      className={inter.variable}
+      suppressHydrationWarning
+    >
+      <body className="antialiased bg-diriyah-bg-primary text-text">
+        {children}
       </body>
     </html>
   )

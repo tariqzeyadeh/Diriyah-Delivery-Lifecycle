@@ -1,0 +1,27 @@
+# Dependencies & build
+node_modules
+npm-debug.log*
+.next
+out
+build
+coverage
+.git
+.gitignore
+.cursor
+agent-transcripts
+terminals
+*.md
+!README.md
+.env
+.env.*
+!.env.example
+tests
+playwright.config.ts
+playwright-report
+test-results
+tmp-*
+a.md
+demo-start.sh
+.dockerignore
+Dockerfile
+docker-compose.yml

@@ -1,0 +1,63 @@
+# 20_Status Lookups (62 rows)
+Canonical Status and Lookup Values |  |  |  |  |  |  | 
+Minimum workflow code set. Labels may be configured, but canonical codes and transition integrity should remain stable for integrations and Power BI. |  |  |  |  |  |  | 
+Lookup Group | Code | Display Label | Sort Order | Terminal | Permitted Next Status / Stage | Maintained / Actioned By | Rule / Note
+Entry Route | STRATEGIC | Strategic | 10 | 0 | PI-01 | Strategy & Governance | Requires strategy/objective/KPI/BSC
+Entry Route | ADHOC | Non-strategic / Ad hoc | 20 | 0 | PI-04 | Business Team | Requires ad-hoc justification
+Strategy Status | DRAFT | Draft | 10 | 0 | Submitted; Withdrawn | Strategy & Governance | Editable
+Strategy Status | SUBMITTED | Submitted for Approval | 20 | 0 | Approved; Returned; Rejected | CTO | Locked
+Strategy Status | RETURNED | Returned for Revision | 30 | 0 | Draft; Resubmitted; Withdrawn | Strategy & Governance | New version/revision
+Strategy Status | APPROVED | Approved Baseline | 40 | 1 | Superseded; Archived | Workflow | Immutable baseline
+Strategy Status | REJECTED | Rejected / Closed | 50 | 1 | None | CTO | Terminal; distinct from return
+Demand Status | DRAFT | Draft | 10 | 0 | Submitted; Cancelled | Business Team | Editable
+Demand Status | SUBMITTED | Submitted | 20 | 0 | Under Validation; Returned; Withdrawn | Workflow | Locked for requester
+Demand Status | UNDER_VALIDATION | Under Budget Validation | 30 | 0 | Validated; Conditional; Returned; Not Fundable | Commercial & Budgeting | Findings tracked
+Demand Status | VALIDATED | Validated | 40 | 0 | Included; Deferred; Cancelled | Commercial & Budgeting | Eligible for consolidation
+Demand Status | CONDITIONAL | Validated with Conditions | 45 | 0 | Included; Returned; Deferred | Commercial & Budgeting | Conditions tracked
+Demand Status | RETURNED | Returned for Revision | 50 | 0 | Draft; Resubmitted; Cancelled | Business Team | New version
+Demand Status | INCLUDED | Included in Budget | 60 | 0 | Funded; Deferred; Removed by revision | Workflow | Mapped to budget line
+Demand Status | FUNDED | Budget Approved | 70 | 1 | Procurement Planned; Cancelled by change | Workflow | Approved baseline
+Demand Status | DEFERRED | Deferred | 80 | 1 | Reactivated in future cycle | Commercial & Budgeting/CTO | Reason required
+Demand Status | NOT_FUNDABLE | Not Fundable | 90 | 1 | Reactivated by new cycle/version | Commercial & Budgeting | Reason required
+Demand Status | CANCELLED | Cancelled | 100 | 1 | None | Business Owner | Reason required
+Budget Status | DRAFT | Draft | 10 | 0 | Consolidating; Withdrawn | Commercial & Budgeting | Editable
+Budget Status | CONSOLIDATING | Consolidating | 20 | 0 | Submitted; Draft | Commercial & Budgeting | Checks active
+Budget Status | SUBMITTED | Submitted for CTO Approval | 30 | 0 | Approved; Conditional; Returned; Rejected | CTO | Locked
+Budget Status | RETURNED | Returned for Revision | 40 | 0 | Draft; Resubmitted | Commercial & Budgeting | New version
+Budget Status | APPROVED | Approved Baseline | 50 | 1 | Revised/Superseded | Workflow | Procurement authority
+Budget Status | APPROVED_COND | Approved with Conditions | 55 | 1 | Conditions Cleared; Superseded | Workflow | Conditional release rules
+Budget Status | REJECTED | Rejected / Closed | 60 | 1 | None | CTO | Terminal
+Procurement Stage | PLANNED | Planned | 10 | 0 | PR Preparation; Cancelled | Commercial & Budgeting | Plan approved
+Procurement Stage | PR_PREP | PR Preparation | 20 | 0 | PR Approval; Returned; Cancelled | Commercial & Budgeting | Scope/budget ready
+Procurement Stage | PR_APPROVAL | PR Approval | 30 | 0 | Tender/RFx; Contract/PO; Returned | Workflow/SAP | Canonical mapping
+Procurement Stage | RFX | Tender / RFx | 40 | 0 | Evaluation; Cancelled | Procurement | Competitive route
+Procurement Stage | EVALUATION | Evaluation | 50 | 0 | Award Approval; No Award; Returned | Procurement | Weights/evidence complete
+Procurement Stage | AWARD | Award Approval | 60 | 0 | Contract/PO; Returned; No Award | Procurement | Decision recorded
+Procurement Stage | COMMITMENT | Contract / PO | 70 | 0 | Delivery; Cancelled | SAP/Procurement | Commitment created
+Procurement Stage | DELIVERY | Delivery / Mobilization | 80 | 0 | Acceptance; Project Handoff; Cancelled | Commercial & Budgeting | Progress tracked
+Procurement Stage | ACCEPTANCE | Acceptance | 90 | 0 | Completed; Project Handoff; Returned | Business Owner | Evidence required
+Procurement Stage | COMPLETED | Completed | 100 | 1 | None | Workflow | Terminal
+Procurement Stage | CANCELLED | Cancelled | 110 | 1 | None | Authorized owner | Reason/evidence required
+Procurement Health | NOT_STARTED | Not Started | 10 | 0 | On Track; At Risk; On Hold; Cancelled | Owner | 
+Procurement Health | ON_TRACK | On Track | 20 | 0 | At Risk; Delayed; On Hold; Completed | Owner/System | 
+Procurement Health | AT_RISK | At Risk | 30 | 0 | On Track; Delayed; On Hold; Completed | Owner | Reason/action required
+Procurement Health | DELAYED | Delayed | 40 | 0 | On Track; At Risk; On Hold; Completed | Owner/System | Positive variance; action required
+Procurement Health | ON_HOLD | On Hold | 50 | 0 | On Track; Cancelled | Authorized owner | Reason/resume condition required
+Procurement Health | COMPLETED | Completed | 60 | 1 | None | Workflow | Completion evidence required
+Procurement Health | CANCELLED | Cancelled | 70 | 1 | None | Authorized owner | Cancellation evidence required
+PMO Handoff | NOT_APPLICABLE | Not Applicable | 10 | 1 | None | System | Non-project outcome
+PMO Handoff | NOT_READY | Not Ready | 20 | 0 | Ready; Cancelled | Commercial & Budgeting | Checklist incomplete
+PMO Handoff | READY | Ready | 30 | 0 | Sent; Not Ready | Commercial & Budgeting | Checklist passes
+PMO Handoff | SENT | Sent to PMO | 40 | 0 | Accepted; Returned | Workflow | PMO task created
+PMO Handoff | ACCEPTED | Accepted / Registered | 50 | 1 | None | PMO | Project ID created
+PMO Handoff | RETURNED | Returned | 60 | 0 | Not Ready; Ready; Sent | PMO | Comments required
+Approval Decision | PENDING | Pending | 10 | 0 | Approved; Conditional; Returned; Rejected; Withdrawn | Approver/Workflow | 
+Approval Decision | APPROVED | Approved | 20 | 1 | None | Approver | Record advances
+Approval Decision | APPROVED_COND | Approved with Conditions | 30 | 1 | None | Approver | Conditions required
+Approval Decision | RETURNED | Returned for Revision | 40 | 1 | None | Approver | Revision loop; comments required
+Approval Decision | REJECTED | Rejected / Closed | 50 | 1 | None | Approver | Terminal; explicit authority
+Approval Decision | WITHDRAWN | Withdrawn | 60 | 1 | None | Submitter/Workflow | Reason required
+RAG | GREEN | Green | 10 | 0 | Any | System/controlled override | Default score >=90
+RAG | AMBER | Amber | 20 | 0 | Any | System/controlled override | Default score 70–89.99
+RAG | RED | Red | 30 | 0 | Any | System/controlled override | Default score <70
+RAG | NOT_RATED | Not Rated | 40 | 0 | Any | System | Insufficient validated data

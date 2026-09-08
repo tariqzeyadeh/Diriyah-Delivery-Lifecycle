@@ -1,0 +1,2 @@
+legacy_id,demand_title,entry_route,record_status,executive_summary,current_state_problem,requesting_department,business_owner,funding_requested_sar,capex_sar,opex_sar,fiscal_year,created_by
+LEG-BAD,Incomplete Row,STRATEGIC,NOT_A_REAL_STATUS,,Missing texts.,Technology,ahmed.khalid,100000,50000,50000,2027,migration.bot

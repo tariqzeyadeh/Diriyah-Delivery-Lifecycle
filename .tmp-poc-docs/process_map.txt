@@ -1,0 +1,31 @@
+Pre-initiation Process
+Strategy & 
+GovernanceCTOCommercial & 
+BudgetingBusiness TeamsPMO Platform
+Develop Strategy
+Approve 
+StrategyNo
+Yes
+Demand Submission
+Budgeting
+Yes
+Budget Approval
+No
+Develop & Execute 
+Procurement Plan
+(Projects & Other 
+Requests)
+No
+Yes
+Register Projects
+Link Procurement 
+Plan to Strategy
+Link Projects to 
+Strategy
+Develop 
+Consolidated Report
+Start
+Start
+End
+Strategy Tracking
+Strategy Tracking

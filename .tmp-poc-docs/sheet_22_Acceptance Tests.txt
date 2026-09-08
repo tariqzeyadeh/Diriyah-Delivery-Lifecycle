@@ -1,0 +1,29 @@
+# 22_Acceptance Tests (28 rows)
+POC Acceptance Scenarios |  |  |  |  | 
+Minimum end-to-end tests proving the templates, workflow, calculations, integrations, audit and one-page report operate as specified. |  |  |  |  | 
+Test ID | Scenario | Test Action | Expected Result | Rules Covered | Priority
+AT-001 | Strategic start | Create process using Strategic route | Strategy draft is created; Master ID generated; demand/budget do not open before approval | BR-001, BR-004 | Critical
+AT-002 | Ad-hoc start | Create process using Non-strategic/Ad hoc route | Demand opens directly; strategy fields hidden/not applicable; ad-hoc justification mandatory | BR-005, BR-018 | Critical
+AT-003 | Strategy completeness | Submit strategy without KPI weight reconciliation | Submission blocked with objective/KPI error list | BR-006, BR-007 | Critical
+AT-004 | Strategy return | CTO returns strategy with comments | Submitted version remains locked; new revision created; owner task contains comments; history retained | BR-008–BR-012 | Critical
+AT-005 | Parallel tasks | CTO approves complete strategy | Budget development and demand submission tasks open concurrently under same Master ID | BR-013 | Critical
+AT-006 | Demand conditional reviews | Submit demand with architecture/security/data impact = Yes | All triggered reviewer tasks open; validation blocked until critical findings resolved | BR-015 | High
+AT-007 | Ad-hoc business case | Submit ad-hoc demand without justification | Submission blocked; strategic links not required | BR-005, BR-016 | Critical
+AT-008 | Duplicate demand | Submit demand matching active project/contract | Potential duplicate displayed; validator must link/dispose before validation | BR-020 | High
+AT-009 | Budget orphan prevention | Attempt budget line without validated demand | Save/inclusion blocked | BR-021 | Critical
+AT-010 | Budget calculation | Change quantity, unit cost, tax or FX rate | Gross, tax, SAR total and header totals recalculate; derived fields remain read-only | BR-024, BR-025 | Critical
+AT-011 | Budget reconciliation | Submit with phasing difference or invalid cost-center/GL combination | CTO submission blocked with line-level differences | BR-022, BR-023, BR-027 | Critical
+AT-012 | Budget return | CTO returns selected budget lines/demands | Targeted revision tasks created; decision/version history retained; resubmission increments | BR-028 | High
+AT-013 | Procurement release | Attempt release before approved budget effective date | Release blocked with funding/effective-date error | BR-029 | Critical
+AT-014 | Procurement over-commit | Enter commitment exceeding remaining approved amount | Update blocked or routed to authorized budget change; no silent overrun | BR-030 | Critical
+AT-015 | Procurement status history | Move item through PR, RFx, award and contract milestones | Append-only updates retained; current stage/progress derived correctly | BR-031, BR-032 | Critical
+AT-016 | Delayed procurement | Forecast completion exceeds planned date | Variance calculated; delayed/at-risk reason, impact and action required; dashboard updated | BR-033 | High
+AT-017 | PMO handoff | Complete project-producing procurement item and readiness pack | PMO task created automatically with full traceability and evidence | BR-034 | Critical
+AT-018 | Project registration | PMO registers valid handoff | Project ID generated; Master ID/foreign keys retained; next-phase record/link created | BR-035, BR-036 | Critical
+AT-019 | KPI validation | Submit KPI actual but leave validation pending | Actual excluded from approved BSC and missing/unvalidated flag shown | BR-038 | Critical
+AT-020 | BSC linkage | Update linked project progress and procurement/budget values | Objective project/budget components and overall score refresh under configured weights | BR-039, BR-040 | High
+AT-021 | Ad-hoc score isolation | Complete non-strategic procurement/project | Reported in ad-hoc totals but does not alter strategy/BSC score | BR-041 | High
+AT-022 | Report reconciliation | Refresh Power BI one-pager with multiple record versions | Only current approved/validated versions counted; source totals reconcile | BR-042 | Critical
+AT-023 | Report quality hold | Introduce broken budget/entity reconciliation | Report shows Data Quality Failure and cannot be marked Published | BR-044 | Critical
+AT-024 | Role security | Business requester attempts to approve strategy/budget or view restricted other-unit record | Action/view denied and audited | BR-045, BR-046 | Critical
+AT-025 | Integration idempotency | Replay same SAP/P+ payload | Existing mapped record updated once; no duplicate; unknown status quarantined | BR-048, BR-049 | Critical

@@ -1,0 +1,54 @@
+# 21_Business Rules (53 rows)
+Cross-Stage Business Rules |  |  |  |  | 
+Developer-enforceable rules governing traceability, routing, versioning, finance, procurement, performance, security and reporting. |  |  |  |  | 
+Rule ID | Domain | Business Rule | Trigger / Scope | Required System Response | Criticality
+BR-001 | Traceability | Master Traceability ID is created exactly once at PI-00 and is immutable. | All routes/entities | Reject transaction; log security event if tampering attempted | Critical
+BR-002 | Traceability | Every child entity must retain the same Master Traceability ID as its parent. | All child records | Block save; show parent/child mismatch | Critical
+BR-003 | Traceability | Every entity receives its own unique child ID; records must not rely on Master ID as sole primary key. | All entities | Block duplicate; generate next sequence | Critical
+BR-004 | Routing | Strategic route enters strategy development and CTO strategy gate before parallel budget/demand work. | Entry Route = Strategic | Route PI-01 → G-S1 | Critical
+BR-005 | Routing | Non-strategic/ad-hoc route enters Demand Submission directly and requires ad-hoc justification. | Entry Route = Ad hoc | Skip strategy fields/gate; route PI-04 | Critical
+BR-006 | Strategy | Strategy cannot be submitted until at least one objective and complete KPI/BSC mapping exist. | G-S1 submission | Block and display incomplete records | Critical
+BR-007 | Strategy | Perspective weights, objective weights within perspective and KPI weights within objective must each reconcile to 100%. | Strategy submission | Block outside configured rounding tolerance | Critical
+BR-008 | Approval | Submitting an entity locks the submitted version and generates an approval version hash. | All approval gates | Read-only pending decision | Critical
+BR-009 | Approval | An approved version is immutable; any change creates a new working revision linked to the baseline. | Approved entity | Create revision, never overwrite | Critical
+BR-010 | Approval | Returned for Revision loops to the defined stage and preserves all prior versions, comments and decisions. | Return decision | Create revision tasks and increment resubmission | Critical
+BR-011 | Approval | Rejected/Closed is terminal and distinct from Returned for Revision; it is available only to explicitly authorized roles. | Approval decision | Close workflow; no implicit revision | High
+BR-012 | Approval | Comments are mandatory for Return, Reject, Approved with Conditions and line-level partial decisions. | Decision commit | Block decision without adequate comments/conditions | High
+BR-013 | Parallel Flow | After strategy approval, budget development and demand submission open in parallel. | G-S1 Approved | Create both task groups; track independently | Critical
+BR-014 | Parallel Flow | Budget consolidation cannot submit until included demands have completed budget validation. | PI-06 | Exclude/block unresolved demands | Critical
+BR-015 | Demand | A demand must pass applicable conditional architecture, security/privacy and data-governance reviews. | Demand validation | Block validation for unresolved critical finding | High
+BR-016 | Demand | All demand business-case mandatory fields and triggered conditional fields must be complete before submission. | PI-04 submission | Completeness must equal 100% | Critical
+BR-017 | Demand | Every demand includes a do-nothing/base option and at least one actionable option. | Business case | Block submission | High
+BR-018 | Demand | Non-strategic requests must remain separately identifiable in all budget and management reporting. | Ad-hoc route | Never auto-map to strategy without approved reclassification | High
+BR-019 | Demand | Urgency does not bypass required budget or CTO approval controls. | Emergency/Critical | Expedited SLA may apply but gates remain | Critical
+BR-020 | Demand | Potential duplicate/overlap records require explicit disposition and related-record reference. | Duplicate check non-clear | Block validation until disposition | High
+BR-021 | Budget | Every included budget line maps to one validated demand and one active budget submission version. | Budget line | Block orphan line | Critical
+BR-022 | Budget | Budget line phasing must equal requested/recommended/approved totals for the selected basis. | Budget validation/consolidation | Fail reconciliation and block CTO submission | Critical
+BR-023 | Budget | CAPEX/OPEX, cost category, company, cost center and GL mappings must be mutually valid. | Accounting validation | Fail invalid combination | Critical
+BR-024 | Budget | Foreign-currency values use an approved rate table and store rate source/effective date. | Currency != SAR | Block missing/unauthorized rate | High
+BR-025 | Budget | Derived budget amounts are calculated from visible drivers; users cannot directly overwrite derived totals. | All calculations | Read-only calculated fields | Critical
+BR-026 | Budget | No hidden contingency is permitted; contingency must be a visible line component with basis. | Line estimate | Validation warning/fail | High
+BR-027 | Budget | Budget CTO submission requires demand, phasing, accounting and unresolved-finding checks to pass. | G-B1 submission | Block and display failed checks | Critical
+BR-028 | Budget | A budget return identifies the affected records and revision owner; unaffected records remain traceable to submitted version. | G-B1 Return | Create targeted tasks | High
+BR-029 | Procurement | Procurement item can be created/released only from an effective CTO-approved budget line. | PI-07/PI-08 | Block release | Critical
+BR-030 | Procurement | Planned/committed procurement value cannot exceed remaining approved amount without authorized change. | Value update | Block or route budget change approval | Critical
+BR-031 | Procurement | Current procurement stage and progress are derived from validated append-only status updates. | Execution | Do not overwrite history | Critical
+BR-032 | Procurement | Milestone transitions must follow the configured route; backward transitions require correction reason and audit. | Status update | Block invalid transition | High
+BR-033 | Procurement | At-risk, delayed, on-hold and cancelled statuses require cause, impact and action/evidence as applicable. | Exception status | Block incomplete update | High
+BR-034 | Procurement | Project outcome automatically creates a PMO handoff task when readiness becomes Ready. | Outcome = Project | Set Sent; notify PMO | Critical
+BR-035 | Project | PMO cannot register a project without valid demand, approved budget, procurement outcome and minimum document pack. | Registration | Block decision = Registered | Critical
+BR-036 | Project | Registered project inherits Master ID and alignment links and receives its own Project ID. | PMO registration | Generate ID and persist foreign keys | Critical
+BR-037 | Project | Differences between approved demand/procurement scope or value and registration data require an approved reference/change. | Registration validation | Flag/block material mismatch | High
+BR-038 | Performance | Only validated KPI updates are included in approved scorecard calculations. | BSC refresh | Exclude and flag unvalidated/missing data | Critical
+BR-039 | Performance | Default objective composite weights are KPI 70%, project progress 20%, budget performance 10%; configuration changes are versioned and approved. | BSC calculation | Validate weights total 100% | High
+BR-040 | Performance | BSC project progress uses explicit objective-contribution weights, not an unweighted project average. | Project links | Normalize only under documented rule | High
+BR-041 | Performance | Ad-hoc items do not affect strategic score unless formally reclassified/linked through approved change. | Ad-hoc route | Report separately | High
+BR-042 | Reporting | The one-page report uses only current approved/validated versions and prevents version double-counting. | Power BI model | Model filter and reconciliation controls | Critical
+BR-043 | Reporting | Report displays reporting period, data as-of and last refresh timestamps. | One-page report | Block Published status if missing | High
+BR-044 | Reporting | Critical reconciliation failure prevents the report from being marked Published and displays Data Quality Failure. | Report refresh | Publish hold and alert | Critical
+BR-045 | Security | Role-based and row-level access apply to records, attachments, comments and exported reports. | All modules | Deny by default; audit access | Critical
+BR-046 | Security | Budget, contract, personal and security-sensitive fields follow classification-based access and export restrictions. | Confidential/Restricted data | Mask/deny/export control | Critical
+BR-047 | Audit | Business, approval, integration and administrative changes are logged with before/after values, actor and timestamp. | All changes | Append-only audit event | Critical
+BR-048 | Integration | External source keys are unique per system and integration retries are idempotent. | SAP/P+/ServiceNow integrations | Prevent duplicate records/transactions | Critical
+BR-049 | Integration | Source-system status values map to canonical platform codes; unmapped values are quarantined and alerted. | Integration | Do not silently coerce | High
+BR-050 | Records | Approved and audit records use soft delete/deactivation and comply with configured retention policy. | All governed records | No physical delete before retention expiry | Critical

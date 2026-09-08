@@ -1,0 +1,3 @@
+legacy_id,demand_title,entry_route,record_status,executive_summary,current_state_problem,requesting_department,business_owner,funding_requested_sar,capex_sar,opex_sar,fiscal_year,created_by
+LEG-001,Enterprise Identity Platform Uplift,STRATEGIC,DRAFT,Modernize IdP and privileged access for Diriyah core systems.,Fragmented IAM controls across business units.,Technology,ahmed.khalid,2500000,1800000,700000,2027,migration.bot
+LEG-002,Facilities Patch Orchestration (Urgent),ADHOC,SUBMITTED,Mandatory Group Risk control uplift required this quarter without strategy envelope.,Manual patching creates compliance exposure across sites.,Facilities,ahmed.khalid,450000,,450000,2027,migration.bot

@@ -1,0 +1,58 @@
+# Diriyah — Docker Compose (POC demo + cloud baseline)
+# Usage: ./demo-start.sh   OR   docker compose up -d --build
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: atlas-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-atlas_root_secret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-atlas_db}
+      MYSQL_USER: ${MYSQL_USER:-atlas_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-atlas_secret}
+    ports:
+      - '${MYSQL_PORT:-3306}:3306'
+    volumes:
+      - atlas_mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          '127.0.0.1',
+          '-u',
+          'root',
+          '-p${MYSQL_ROOT_PASSWORD:-atlas_root_secret}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atlas-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      # Always use Docker DNS name `db` inside the compose network
+      DATABASE_URL: mysql://${MYSQL_USER:-atlas_user}:${MYSQL_PASSWORD:-atlas_secret}@db:3306/${MYSQL_DATABASE:-atlas_db}
+    ports:
+      - '${APP_PORT:-3000}:3000'
+
+volumes:
+  atlas_mysql_data:

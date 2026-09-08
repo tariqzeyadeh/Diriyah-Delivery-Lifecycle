@@ -1,0 +1,1681 @@
+// Diriyah — Exhaustive Prisma schema
+// Source: Pre-Initiation_POC_Templates_and_Data_Dictionary R.xlsx
+// Sheets: 02_ID Relationships, 04_Shared Fields, 05_Strategy, 06_Objectives,
+//         07_KPI Register, 08_KPI Updates, 10_Demand Business Case,
+//         11_Budget Header, 12_Budget Lines, 13_Budget Consolidation,
+//         14_Procurement Plan, 15_Procurement Updates, 16_Project Registration,
+//         17_Approvals, 18_Evidence Comments,
+//         20_Status Lookups (BR-008 / BR-026 / BR-027 governance)
+// Mapping: Long Text->Text; Currency/Decimal/Percentage->Decimal(18,2);
+//          Repeatable*/Multi*/Structured/Polymorphic->Json; child entities->models.
+// Invariants: every business model includes SHR; governance models are append-oriented;
+//             onDelete Restrict; no hard deletes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum EntryRoute {
+  STRATEGIC
+  ADHOC
+}
+
+enum StrategyStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  APPROVED
+  REJECTED
+}
+
+enum DemandStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_VALIDATION
+  VALIDATED
+  CONDITIONAL
+  RETURNED
+  INCLUDED
+  FUNDED
+  DEFERRED
+  NOT_FUNDABLE
+  CANCELLED
+}
+
+enum BudgetStatus {
+  DRAFT
+  CONSOLIDATING
+  SUBMITTED
+  RETURNED
+  APPROVED
+  APPROVED_COND
+  REJECTED
+}
+
+enum ProcurementStage {
+  PLANNED
+  PR_PREP
+  PR_APPROVAL
+  RFX
+  EVALUATION
+  AWARD
+  COMMITMENT
+  DELIVERY
+  ACCEPTANCE
+  COMPLETED
+  CANCELLED
+}
+
+enum ProcurementHealth {
+  NOT_STARTED
+  ON_TRACK
+  AT_RISK
+  DELAYED
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum PmoHandoffStatus {
+  NOT_APPLICABLE
+  NOT_READY
+  READY
+  SENT
+  ACCEPTED
+  RETURNED
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  APPROVED_COND
+  RETURNED
+  REJECTED
+  WITHDRAWN
+}
+
+enum RagStatus {
+  GREEN
+  AMBER
+  RED
+  NOT_RATED
+}
+
+enum DecisionEnum {
+  PENDING
+  APPROVED
+  APPROVED_COND
+  RETURNED
+  REJECTED
+  WITHDRAWN
+}
+
+enum VirusScanStatus {
+  PENDING
+  CLEAN
+  PASSED
+  QUARANTINED
+  FAILED
+}
+
+enum ResolutionStatus {
+  OPEN
+  RESPONDED
+  RESOLVED
+  REOPENED
+  NOT_APPLICABLE
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  PARTIALLY_FAILED
+  FAILED
+}
+
+enum LockReleaseAction {
+  KEEP_LOCKED
+  CREATE_REVISION
+  RELEASE_FOR_NEXT_STAGE
+  CLOSE
+}
+
+enum CommentType {
+  GENERAL
+  CLARIFICATION
+  VALIDATION_FINDING
+  RETURN_INSTRUCTION
+  APPROVAL_COMMENT
+  SYSTEM_NOTE
+}
+
+enum AttachmentClassification {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  RESTRICTED
+}
+
+enum Perspective {
+  FINANCIAL
+  CUSTOMER
+  INTERNAL
+  LEARNING
+}
+
+enum RaidcType {
+  RISK
+  ISSUE
+  ASSUMPTION
+  DEPENDENCY
+  CONSTRAINT
+}
+
+enum VersionStatus {
+  WORKING
+  SUBMITTED
+  APPROVED
+  SUPERSEDED
+  ARCHIVED
+}
+
+// ─────────────────────────────────────────────
+// Master Traceability Spine
+// ─────────────────────────────────────────────
+
+model MasterTrace {
+  master_trace_id String     @id @db.VarChar(64)
+  entry_route     EntryRoute
+  created_at      DateTime   @default(now())
+  created_by      String     @db.VarChar(128)
+  is_active       Boolean    @default(true)
+
+  strategies         Strategy[]
+  demands            Demand[]
+  budget_submissions BudgetSubmission[]
+  procurement_plans  ProcurementPlan[]
+  procurement_items  ProcurementItem[]
+  projects           ProjectRegistration[]
+  approvals          ApprovalTransaction[]
+  attachments        Attachment[]
+  comments           Comment[]
+
+  @@map("master_trace")
+}
+
+model Strategy {
+  strategy_id                     String    @id @db.VarChar(64)
+  strategy_title                  String    @db.VarChar(255)
+  strategy_type                   String?   @db.VarChar(255)
+  parent_strategy_id              String?   @db.VarChar(255)
+  horizon_start_date              DateTime?
+  horizon_end_date                DateTime?
+  baseline_fiscal_year            Int?
+  executive_sponsor_user_id       String?   @db.VarChar(128)
+  strategy_owner_user_id          String?   @db.VarChar(128)
+  performance_manager_user_id     String?   @db.VarChar(128)
+  executive_summary               String?   @db.Text
+  mandate_statement               String?   @db.Text
+  vision_statement                String?   @db.Text
+  mission_statement               String?   @db.Text
+  strategic_drivers               Json?
+  current_state_summary           String?   @db.Text
+  trend_summary                   String?   @db.Text
+  swot_summary                    String?   @db.Text
+  target_state_description        String?   @db.Text
+  strategic_theme_ids             Json?
+  strategic_priorities            Json?
+  key_outcomes                    Json?
+  scope_in                        String?   @db.Text
+  scope_out                       String?   @db.Text
+  target_beneficiaries            Json?
+  funding_envelope                Decimal?  @db.Decimal(18, 2)
+  currency_code                   String?   @db.VarChar(255)
+  indicative_capex                Decimal?  @db.Decimal(18, 2)
+  indicative_opex                 Decimal?  @db.Decimal(18, 2)
+  annual_funding_profile          Json?
+  funding_source                  Json?
+  review_frequency                String?   @db.VarChar(255)
+  performance_reporting_frequency String?   @db.VarChar(255)
+  decision_forums                 Json?
+  key_assumptions                 String?   @db.Text
+  key_constraints                 String?   @db.Text
+  strategic_risks                 Json?
+  objectives_complete             Boolean?
+  scorecard_complete              Boolean?
+  requested_effective_date        DateTime?
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  master_trace       MasterTrace          @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  themes             StrategicTheme[]
+  objectives         StrategicObjective[]
+  scorecards         BalancedScorecard[]
+  demands            Demand[]
+  budget_submissions BudgetSubmission[]
+  procurement_plans  ProcurementPlan[]
+
+  @@index([master_trace_id])
+  @@map("strategy")
+}
+
+// ─────────────────────────────────────────────
+// Strategic Theme (02_ID Relationships — THM entity)
+// ─────────────────────────────────────────────
+
+model StrategicTheme {
+  theme_id          String  @id @db.VarChar(64)
+  strategy_id       String  @db.VarChar(64)
+  theme_name        String  @db.VarChar(255)
+  theme_description String? @db.Text
+  theme_order       Int?
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  strategy Strategy @relation(fields: [strategy_id], references: [strategy_id], onDelete: Restrict)
+
+  @@index([strategy_id])
+  @@index([master_trace_id])
+  @@map("strategic_theme")
+}
+
+model StrategicObjective {
+  objective_id                    String    @id @db.VarChar(64)
+  theme_id                        String?   @db.VarChar(255)
+  objective_name                  String    @db.VarChar(255)
+  objective_description           String?   @db.Text
+  intended_outcome                String?   @db.Text
+  bsc_perspective                 String?   @db.VarChar(255)
+  objective_type                  String?   @db.VarChar(255)
+  objective_owner_user_id         String?   @db.VarChar(128)
+  performance_coordinator_user_id String?   @db.VarChar(128)
+  objective_start_date            DateTime?
+  objective_end_date              DateTime?
+  objective_priority              String?   @db.VarChar(255)
+  objective_weight_pct            Decimal?  @db.Decimal(18, 2)
+  baseline_narrative              String?   @db.Text
+  target_outcome_date             DateTime?
+  kpi_ids                         Json?
+  kpi_weight_check                Boolean?
+  physical_progress_pct           Decimal?  @db.Decimal(18, 2)
+  kpi_performance_score           Decimal?  @db.Decimal(18, 2)
+  objective_score                 Decimal?  @db.Decimal(18, 2)
+  performance_as_of_date          DateTime?
+  objective_rag                   String?   @db.VarChar(255)
+  forecast_outcome_status         String?   @db.VarChar(255)
+  allocated_budget_sar            Decimal?  @db.Decimal(18, 2)
+  committed_value_sar             Decimal?  @db.Decimal(18, 2)
+  budget_variance_sar             Decimal?  @db.Decimal(18, 2)
+  objective_dependencies          Json?
+  objective_risk_ids              Json?
+  performance_commentary          String?   @db.Text
+  corrective_action_summary       String?   @db.Text
+  strategy_id                     String    @db.VarChar(64)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  strategy             Strategy             @relation(fields: [strategy_id], references: [strategy_id], onDelete: Restrict)
+  kpis                 KpiDefinition[]
+  benefit_realizations BenefitRealization[]
+
+  @@index([strategy_id])
+  @@index([master_trace_id])
+  @@map("strategic_objective")
+}
+
+model KpiDefinition {
+  kpi_id                     String    @id @db.VarChar(64)
+  kpi_name                   String    @db.VarChar(255)
+  kpi_definition             String?   @db.Text
+  measurement_purpose        String?   @db.Text
+  kpi_type                   String?   @db.VarChar(255)
+  indicator_timing           String?   @db.VarChar(255)
+  performance_polarity       String?   @db.VarChar(255)
+  unit_of_measure            String?   @db.VarChar(255)
+  decimal_precision          Int?
+  calculation_formula        String?   @db.Text
+  numerator_definition       String?   @db.Text
+  denominator_definition     String?   @db.Text
+  aggregation_method         String?   @db.VarChar(255)
+  is_cumulative              Boolean?
+  baseline_value             Decimal?  @db.Decimal(18, 2)
+  baseline_period            String?   @db.VarChar(64)
+  baseline_source            String?   @db.VarChar(255)
+  target_setting_method      String?   @db.VarChar(255)
+  target_rationale           String?   @db.Text
+  target_profile             Json?
+  stretch_target             Decimal?  @db.Decimal(18, 2)
+  green_threshold            String?   @db.VarChar(255)
+  amber_threshold            String?   @db.VarChar(255)
+  red_threshold              String?   @db.VarChar(255)
+  kpi_weight_pct             Decimal?  @db.Decimal(18, 2)
+  score_cap_pct              Decimal?  @db.Decimal(18, 2)
+  binary_success_value       String?   @db.VarChar(255)
+  collection_frequency       String?   @db.VarChar(255)
+  reporting_frequency        String?   @db.VarChar(255)
+  kpi_owner_user_id          String?   @db.VarChar(128)
+  data_steward_user_id       String?   @db.VarChar(128)
+  data_validator_user_id     String?   @db.VarChar(128)
+  kpi_source_system          String?   @db.VarChar(255)
+  source_dataset             String?   @db.VarChar(255)
+  source_field_mapping       String?   @db.Text
+  collection_method          String?   @db.VarChar(255)
+  data_quality_rules         Json?
+  submission_due_offset_days Int?
+  validation_due_offset_days Int?
+  definition_effective_date  DateTime?
+  definition_change_reason   String?   @db.Text
+  objective_id               String    @db.VarChar(64)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  objective StrategicObjective     @relation(fields: [objective_id], references: [objective_id], onDelete: Restrict)
+  updates   KpiPerformanceUpdate[]
+
+  @@index([objective_id])
+  @@index([master_trace_id])
+  @@map("kpi_definition")
+}
+
+model KpiPerformanceUpdate {
+  kpi_update_id          String    @id @db.VarChar(64)
+  period_start_date      DateTime?
+  period_end_date        DateTime?
+  submission_due_date    DateTime?
+  period_target          Decimal?  @db.Decimal(18, 2)
+  actual_value           String?   @db.VarChar(255)
+  numerator_actual       Decimal?  @db.Decimal(18, 2)
+  denominator_actual     Decimal?  @db.Decimal(18, 2)
+  previous_actual        String?   @db.VarChar(255)
+  variance_to_target     Decimal?  @db.Decimal(18, 2)
+  achievement_pct        Decimal?  @db.Decimal(18, 2)
+  weighted_kpi_score     Decimal?  @db.Decimal(18, 2)
+  kpi_rag                String?   @db.VarChar(255)
+  trend_direction        String?   @db.VarChar(255)
+  forecast_value         String?   @db.VarChar(255)
+  forecast_target_status String?   @db.VarChar(255)
+  source_extract_at      DateTime?
+  source_reference       String?   @db.VarChar(255)
+  evidence_attachment_id String?   @db.VarChar(255)
+  dq_completeness_result String?   @db.VarChar(255)
+  dq_accuracy_result     String?   @db.VarChar(255)
+  dq_timeliness_result   String?   @db.VarChar(255)
+  data_quality_status    String?   @db.VarChar(255)
+  performance_commentary String?   @db.Text
+  corrective_action      String?   @db.Text
+  action_owner_user_id   String?   @db.VarChar(128)
+  action_due_date        DateTime?
+  validation_decision    String?   @db.VarChar(255)
+  kpi_id                 String    @db.VarChar(64)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  kpi KpiDefinition @relation(fields: [kpi_id], references: [kpi_id], onDelete: Restrict)
+
+  @@index([kpi_id])
+  @@index([master_trace_id])
+  @@map("kpi_performance_update")
+}
+
+// ─────────────────────────────────────────────
+// Balanced Scorecard Snapshot (09_Balanced Scorecard)
+// ─────────────────────────────────────────────
+
+model BalancedScorecard {
+  scorecard_id                    String     @id @db.VarChar(64)
+  strategy_id                     String     @db.VarChar(64)
+  // BSC-003/004
+  reporting_period                String     @db.VarChar(20) // YYYY-MM or YYYY-Qn
+  data_as_of_date                 DateTime?
+  // Perspective lines (BSC-005 to BSC-015) — stored as repeatable JSON
+  perspective_lines               Json?
+  // Delivery counts (BSC-016 to BSC-020)
+  linked_demand_count             Int?
+  linked_procurement_count        Int?
+  linked_project_count            Int?
+  project_contribution_weight_pct Decimal?   @db.Decimal(5, 2)
+  weighted_project_progress_pct   Decimal?   @db.Decimal(5, 2)
+  // Financial (BSC-021/022/023)
+  approved_budget_sar             Decimal?   @db.Decimal(18, 2)
+  comparison_value_sar            Decimal?   @db.Decimal(18, 2)
+  budget_performance_score        Decimal?   @db.Decimal(5, 2)
+  // Component weights (BSC-024/025)
+  kpi_component_weight_pct        Decimal?   @db.Decimal(5, 2) // default 70%
+  budget_component_weight_pct     Decimal?   @db.Decimal(5, 2) // default 10%
+  // Scores (BSC-026 to BSC-029)
+  composite_objective_score       Decimal?   @db.Decimal(5, 2)
+  perspective_score               Decimal?   @db.Decimal(5, 2)
+  overall_strategy_score          Decimal?   @db.Decimal(5, 2)
+  overall_strategy_rag            RagStatus?
+  // Narrative (BSC-030)
+  executive_narrative             String?    @db.Text
+  // Snapshot metadata
+  is_published                    Boolean    @default(false)
+  published_at                    DateTime?
+  data_quality_status             String?    @db.VarChar(64) // PASS | DATA_QUALITY_FAILURE
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  strategy Strategy @relation(fields: [strategy_id], references: [strategy_id], onDelete: Restrict)
+
+  @@index([strategy_id])
+  @@index([reporting_period])
+  @@index([master_trace_id])
+  @@map("balanced_scorecard")
+}
+
+model Demand {
+  demand_id                        String    @id @db.VarChar(64)
+  demand_title                     String    @db.VarChar(255)
+  demand_type                      String?   @db.VarChar(255)
+  demand_category                  String?   @db.VarChar(255)
+  demand_subcategory               String?   @db.VarChar(255)
+  requesting_department_id         String?   @db.VarChar(255)
+  requesting_location_entity       Json?
+  requester_user_id                String?   @db.VarChar(128)
+  business_owner_user_id           String?   @db.VarChar(128)
+  executive_sponsor_user_id        String?   @db.VarChar(128)
+  strategic_classification         String?   @db.VarChar(255)
+  origin_channel                   String?   @db.VarChar(255)
+  strategy_id                      String?   @db.VarChar(255)
+  objective_ids                    Json?
+  kpi_ids                          Json?
+  strategic_contribution_statement String?   @db.Text
+  ad_hoc_justification             String?   @db.Text
+  mandatory_driver                 String?   @db.VarChar(255)
+  problem_opportunity_statement    String?   @db.Text
+  current_state_description        String?   @db.Text
+  baseline_evidence                Json?
+  do_nothing_impact                String?   @db.Text
+  business_objectives              Json?
+  expected_outcomes                Json?
+  success_criteria                 Json?
+  beneficiary_groups               Json?
+  expected_volume                  Json?
+  scope_in                         String?   @db.Text
+  scope_out                        String?   @db.Text
+  high_level_deliverables          Json?
+  business_requirements            Json?
+  service_level_requirements       Json?
+  acceptance_criteria              Json?
+  integration_requirements         Json?
+  data_requirements                Json?
+  reporting_requirements           Json?
+  architecture_impact              Boolean?
+  architecture_assessment_summary  String?   @db.Text
+  security_privacy_impact          Boolean?
+  security_requirements            String?   @db.Text
+  data_governance_impact           Boolean?
+  hosting_requirement              String?   @db.VarChar(512)
+  continuity_criticality           String?   @db.VarChar(255)
+  recovery_time_objective          String?   @db.VarChar(64)
+  recovery_point_objective         String?   @db.VarChar(64)
+  preferred_option_id              String?   @db.VarChar(255)
+  preferred_option_rationale       String?   @db.Text
+  indicative_one_time_cost_sar     Decimal?  @db.Decimal(18, 2)
+  indicative_recurring_cost_sar    Decimal?  @db.Decimal(18, 2)
+  tco_sar                          Decimal?  @db.Decimal(18, 2)
+  cost_estimate_basis              String?   @db.VarChar(512)
+  estimate_confidence              String?   @db.VarChar(255)
+  financial_evaluation_years       Int?
+  discount_rate_pct                Decimal?  @db.Decimal(18, 2)
+  npv_sar                          Decimal?  @db.Decimal(18, 2)
+  irr_pct                          Decimal?  @db.Decimal(18, 2)
+  roi_pct                          Decimal?  @db.Decimal(18, 2)
+  payback_period_months            Decimal?  @db.Decimal(18, 2)
+  requested_start_date             DateTime?
+  required_by_date                 DateTime?
+  key_milestones                   Json?
+  urgency                          String?   @db.VarChar(255)
+  business_impact                  String?   @db.VarChar(255)
+  priority_score                   Decimal?  @db.Decimal(18, 2)
+  delivery_mode                    String?   @db.VarChar(255)
+  resource_requirements            Json?
+  operating_owner_unit_id          String?   @db.VarChar(255)
+  support_model                    String?   @db.Text
+  procurement_required             Boolean?
+  indicative_sourcing_route        String?   @db.VarChar(255)
+  existing_contract_id             String?   @db.VarChar(255)
+  stakeholders                     Json?
+  business_owner_attestation       Json?
+  completeness_score_pct           Decimal?  @db.Decimal(18, 2)
+  duplicate_check_result           Json?
+  budget_validation_decision       String?   @db.VarChar(255)
+  budget_validation_comments       String?   @db.Text
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  master_trace      MasterTrace           @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  strategy          Strategy?             @relation(fields: [strategy_id], references: [strategy_id], onDelete: Restrict)
+  options           DemandOption[]
+  benefits          DemandBenefit[]
+  raidc_items       DemandRaidc[]
+  budget_lines      BudgetLine[]
+  procurement_items ProcurementItem[]
+  projects          ProjectRegistration[]
+
+  @@index([master_trace_id])
+  @@index([strategy_id])
+  @@map("demand")
+}
+
+model DemandOption {
+  option_id                 String   @id @db.VarChar(64)
+  demand_id                 String   @db.VarChar(64)
+  option_name               String   @db.VarChar(255)
+  option_description        String?  @db.Text
+  option_estimated_cost_sar Decimal? @db.Decimal(18, 2)
+  option_delivery_duration  String?  @db.VarChar(64)
+  option_benefits_score     Decimal? @db.Decimal(18, 2)
+  option_risk_score         Decimal? @db.Decimal(18, 2)
+  option_weighted_score     Decimal? @db.Decimal(18, 2)
+  recommendation_status     String?  @db.VarChar(64)
+  // BR-017: every demand must include a do-nothing / base-case option
+  is_do_nothing             Boolean  @default(false)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  demand Demand @relation(fields: [demand_id], references: [demand_id], onDelete: Restrict)
+
+  @@index([demand_id])
+  @@index([master_trace_id])
+  @@map("demand_option")
+}
+
+model DemandBenefit {
+  benefit_id                   String    @id @db.VarChar(64)
+  demand_id                    String    @db.VarChar(64)
+  benefit_type                 String?   @db.VarChar(64)
+  benefit_description          String?   @db.Text
+  benefit_baseline             String?   @db.VarChar(255)
+  benefit_target               String?   @db.VarChar(255)
+  annual_financial_benefit_sar Decimal?  @db.Decimal(18, 2)
+  benefit_realization_start    DateTime?
+  benefit_owner_user_id        String?   @db.VarChar(128)
+  benefit_kpi_id               String?   @db.VarChar(64)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  demand Demand @relation(fields: [demand_id], references: [demand_id], onDelete: Restrict)
+
+  @@index([demand_id])
+  @@index([master_trace_id])
+  @@map("demand_benefit")
+}
+
+model DemandRaidc {
+  demand_item_id String    @id @db.VarChar(64)
+  demand_id      String    @db.VarChar(64)
+  type           RaidcType
+  description    String    @db.Text
+  owner          String?   @db.VarChar(128)
+  probability    String?   @db.VarChar(32) // Low | Medium | High | Very High
+  impact         String?   @db.VarChar(32) // Low | Medium | High | Critical
+  exposure_score String?   @db.VarChar(32) // derived: probability × impact
+  response       String?   @db.Text // mitigation / response plan
+  status         String?   @db.VarChar(64)
+  due_date       DateTime?
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  demand Demand @relation(fields: [demand_id], references: [demand_id], onDelete: Restrict)
+
+  @@index([demand_id])
+  @@index([master_trace_id])
+  @@map("demand_raidc")
+}
+
+model BudgetSubmission {
+  budget_submission_id           String    @id @db.VarChar(64)
+  budget_cycle                   String?   @db.VarChar(255)
+  budget_scenario                String?   @db.VarChar(255)
+  strategy_id                    String?   @db.VarChar(255)
+  budget_owner_user_id           String?   @db.VarChar(128)
+  planning_start_fy              Int?
+  planning_end_fy                Int?
+  submission_cutoff_at           DateTime?
+  base_currency                  String?   @db.VarChar(255)
+  fx_rate_source_date            String?   @db.VarChar(255)
+  funding_ceiling_sar            Decimal?  @db.Decimal(18, 2)
+  total_requested_sar            Decimal?  @db.Decimal(18, 2)
+  total_validated_sar            Decimal?  @db.Decimal(18, 2)
+  total_recommended_sar          Decimal?  @db.Decimal(18, 2)
+  total_approved_sar             Decimal?  @db.Decimal(18, 2)
+  capex_total_sar                Decimal?  @db.Decimal(18, 2)
+  opex_total_sar                 Decimal?  @db.Decimal(18, 2)
+  one_time_total_sar             Decimal?  @db.Decimal(18, 2)
+  recurring_total_sar            Decimal?  @db.Decimal(18, 2)
+  strategic_total_sar            Decimal?  @db.Decimal(18, 2)
+  adhoc_total_sar                Decimal?  @db.Decimal(18, 2)
+  contingency_total_sar          Decimal?  @db.Decimal(18, 2)
+  tax_total_sar                  Decimal?  @db.Decimal(18, 2)
+  funding_gap_sar                Decimal?  @db.Decimal(18, 2)
+  envelope_reconciliation_status String?   @db.VarChar(255)
+  demand_reconciliation_status   String?   @db.VarChar(255)
+  annual_phasing_status          String?   @db.VarChar(255)
+  prioritization_method          String?   @db.VarChar(255)
+  budget_assumptions             Json?
+  budget_risks                   Json?
+  management_recommendations     String?   @db.Text
+  excluded_deferred_demands      Json?
+  cto_decision_requested         String?   @db.VarChar(255)
+  baseline_effective_date        DateTime?
+  approval_conditions            String?   @db.Text
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  master_trace      MasterTrace          @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  strategy          Strategy?            @relation(fields: [strategy_id], references: [strategy_id], onDelete: Restrict)
+  budget_lines      BudgetLine[]
+  procurement_plans ProcurementPlan[]
+  consolidation     BudgetConsolidation?
+
+  @@index([master_trace_id])
+  @@index([strategy_id])
+  @@map("budget_submission")
+}
+
+model BudgetLine {
+  budget_line_id            String    @id @db.VarChar(64)
+  strategy_objective_ids    Json?
+  line_description          String?   @db.VarChar(255)
+  item_type                 String?   @db.VarChar(255)
+  cost_classification       String?   @db.VarChar(255)
+  cost_category             String?   @db.VarChar(255)
+  cost_subcategory          String?   @db.VarChar(255)
+  is_recurring              Boolean?
+  recurrence_frequency      String?   @db.VarChar(255)
+  commitment_type           String?   @db.VarChar(255)
+  company_code              String?   @db.VarChar(255)
+  cost_center_code          String?   @db.VarChar(255)
+  gl_account_code           String?   @db.VarChar(255)
+  wbs_internal_order        String?   @db.VarChar(255)
+  funding_source            String?   @db.VarChar(255)
+  unit_of_measure           String?   @db.VarChar(255)
+  quantity                  Decimal?  @db.Decimal(18, 2)
+  unit_cost                 Decimal?  @db.Decimal(18, 2)
+  transaction_currency      String?   @db.VarChar(255)
+  exchange_rate_to_sar      Decimal?  @db.Decimal(18, 2)
+  exchange_rate_date        DateTime?
+  gross_amount              Decimal?  @db.Decimal(18, 2)
+  discount_amount           Decimal?  @db.Decimal(18, 2)
+  escalation_amount         Decimal?  @db.Decimal(18, 2)
+  contingency_amount        Decimal?  @db.Decimal(18, 2)
+  net_before_tax            Decimal?  @db.Decimal(18, 2)
+  tax_code                  String?   @db.VarChar(255)
+  tax_rate_pct              Decimal?  @db.Decimal(18, 2)
+  tax_amount                Decimal?  @db.Decimal(18, 2)
+  requested_total           Decimal?  @db.Decimal(18, 2)
+  requested_total_sar       Decimal?  @db.Decimal(18, 2)
+  line_fiscal_year          Int?
+  period_phasing            Json? // [{ period: "YYYY-MM", amount_sar: Decimal }]
+  expected_commitment_date  DateTime?
+  expected_payment_schedule Json? // [{ due_date: Date, amount_sar: Decimal, trigger: String }]
+  estimate_basis            String?   @db.VarChar(255)
+  estimate_source_reference String?   @db.VarChar(255)
+  estimate_date             DateTime?
+  estimate_confidence       String?   @db.VarChar(255)
+  indicative_supplier_id    String?   @db.VarChar(255)
+  contract_id               String?   @db.VarChar(255)
+  procurement_method        String?   @db.VarChar(255)
+  demand_priority_score     Decimal?  @db.Decimal(18, 2)
+  budget_recommendation     String?   @db.VarChar(255)
+  recommended_amount_sar    Decimal?  @db.Decimal(18, 2)
+  recommendation_rationale  String?   @db.Text
+  funding_availability      String?   @db.VarChar(255)
+  duplicate_cost_check      String?   @db.VarChar(255)
+  accounting_validation     String?   @db.VarChar(255)
+  cto_line_decision         String?   @db.VarChar(255)
+  approved_amount_sar       Decimal?  @db.Decimal(18, 2)
+  committed_amount_sar      Decimal?  @db.Decimal(18, 2)
+  actual_amount_sar         Decimal?  @db.Decimal(18, 2)
+  eac_amount_sar            Decimal?  @db.Decimal(18, 2)
+  budget_variance_sar       Decimal?  @db.Decimal(18, 2)
+  budget_submission_id      String    @db.VarChar(64)
+  demand_id                 String    @db.VarChar(64)
+  contingency_basis         String?   @db.VarChar(255)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  budget_submission BudgetSubmission  @relation(fields: [budget_submission_id], references: [budget_submission_id], onDelete: Restrict)
+  demand            Demand            @relation(fields: [demand_id], references: [demand_id], onDelete: Restrict)
+  procurement_items ProcurementItem[]
+
+  @@index([budget_submission_id])
+  @@index([demand_id])
+  @@index([master_trace_id])
+  @@map("budget_line")
+}
+
+model ProcurementPlan {
+  procurement_plan_id            String    @id @db.VarChar(64)
+  procurement_plan_title         String    @db.VarChar(255)
+  procurement_cycle              Json?
+  strategy_id                    String?   @db.VarChar(255)
+  procurement_plan_owner_user_id String?   @db.VarChar(128)
+  plan_start_date                DateTime?
+  plan_end_date                  DateTime?
+  procurement_plan_status        String?   @db.VarChar(255)
+  procurement_plan_version       Int?
+  approved_funding_available_sar Decimal?  @db.Decimal(18, 2)
+  planned_procurement_value_sar  Decimal?  @db.Decimal(18, 2)
+  procurement_item_count         Int?
+  item_type_mix                  Json?
+  capex_opex_mix                 Json?
+  plan_budget_reconciliation     String?   @db.VarChar(255)
+  release_authorization_status   String?   @db.VarChar(255)
+  budget_submission_id           String    @db.VarChar(64)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  master_trace      MasterTrace       @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  budget_submission BudgetSubmission  @relation(fields: [budget_submission_id], references: [budget_submission_id], onDelete: Restrict)
+  strategy          Strategy?         @relation(fields: [strategy_id], references: [strategy_id], onDelete: Restrict)
+  items             ProcurementItem[]
+
+  @@index([master_trace_id])
+  @@index([budget_submission_id])
+  @@map("procurement_plan")
+}
+
+model ProcurementItem {
+  procurement_item_id           String    @id @db.VarChar(64)
+  strategy_performance_links    Json?
+  procurement_item_title        String    @db.VarChar(255)
+  procurement_scope             String?   @db.Text
+  procurement_item_type         String?   @db.VarChar(255)
+  procurement_category          String?   @db.VarChar(255)
+  quantity                      Decimal?  @db.Decimal(18, 2)
+  unit_of_measure               String?   @db.VarChar(255)
+  approved_budget_sar           Decimal?  @db.Decimal(18, 2)
+  planned_value_sar             Decimal?  @db.Decimal(18, 2)
+  transaction_currency          String?   @db.VarChar(255)
+  funding_dimensions            Json?
+  procurement_method            String?   @db.VarChar(255)
+  contract_type                 String?   @db.VarChar(255)
+  competition_type              String?   @db.VarChar(255)
+  single_source_justification   String?   @db.Text
+  existing_contract_id          String?   @db.VarChar(255)
+  vendor_id                     String?   @db.VarChar(255)
+  candidate_supplier_count      Int?
+  evaluation_method             Json?
+  planned_pr_submission_date    DateTime?
+  planned_sourcing_start_date   DateTime?
+  planned_award_date            DateTime?
+  planned_commitment_date       DateTime?
+  planned_delivery_start_date   DateTime?
+  planned_completion_date       DateTime?
+  planned_lead_time_days        Int?
+  procurement_owner_user_id     String?   @db.VarChar(128)
+  business_technical_contact_id String?   @db.VarChar(128)
+  commercial_reviewer_user_id   String?   @db.VarChar(128)
+  scope_ready                   Boolean?
+  budget_ready                  Boolean?
+  requirements_ready            Boolean?
+  reviews_complete              Boolean?
+  procurement_readiness_status  String?   @db.VarChar(255)
+  procurement_stage             String?   @db.VarChar(255)
+  procurement_status            String?   @db.VarChar(255)
+  procurement_progress_pct      Decimal?  @db.Decimal(18, 2)
+  actual_commitment_sar         Decimal?  @db.Decimal(18, 2)
+  accepted_value_sar            Decimal?  @db.Decimal(18, 2)
+  forecast_completion_date      DateTime?
+  schedule_variance_days        Int?
+  value_variance_sar            Decimal?  @db.Decimal(18, 2)
+  procurement_outcome_type      String?   @db.VarChar(255)
+  project_registration_required Boolean?
+  pmo_handoff_readiness         String?   @db.VarChar(255)
+  completion_evidence_ids       Json?
+  procurement_plan_id           String    @db.VarChar(64)
+  budget_line_id                String    @db.VarChar(64)
+  demand_id                     String?   @db.VarChar(64)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  plan                 ProcurementPlan           @relation(fields: [procurement_plan_id], references: [procurement_plan_id], onDelete: Restrict)
+  budget_line          BudgetLine                @relation(fields: [budget_line_id], references: [budget_line_id], onDelete: Restrict)
+  demand               Demand?                   @relation(fields: [demand_id], references: [demand_id], onDelete: Restrict)
+  master_trace         MasterTrace               @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  project_registration ProjectRegistration?
+  status_updates       ProcurementStatusUpdate[]
+
+  @@index([procurement_plan_id])
+  @@index([budget_line_id])
+  @@index([demand_id])
+  @@index([master_trace_id])
+  @@map("procurement_item")
+}
+
+model ProjectRegistration {
+  project_id                     String    @id @db.VarChar(64)
+  project_name                   String    @db.VarChar(255)
+  demand_id                      String?   @db.VarChar(255)
+  procurement_item_id            String?   @db.VarChar(255)
+  budget_line_id                 String?   @db.VarChar(255)
+  strategy_id                    String?   @db.VarChar(255)
+  objective_ids                  Json?
+  kpi_ids                        Json?
+  objective_contribution_weights Json? // [{ objective_id: String, weight_pct: Decimal }]
+  project_type                   String?   @db.VarChar(255)
+  project_category               String?   @db.VarChar(255)
+  delivery_approach              String?   @db.VarChar(255)
+  complexity_rating              String?   @db.VarChar(255)
+  project_priority               String?   @db.VarChar(255)
+  project_sponsor_user_id        String?   @db.VarChar(128)
+  business_owner_user_id         String?   @db.VarChar(128)
+  project_manager_user_id        String?   @db.VarChar(128)
+  technology_owner_user_id       String?   @db.VarChar(128)
+  operating_owner_unit_id        String?   @db.VarChar(255)
+  vendor_id                      String?   @db.VarChar(255)
+  project_purpose                String?   @db.Text
+  project_scope_in               String?   @db.Text
+  project_scope_out              String?   @db.Text
+  project_deliverables           Json?
+  project_acceptance_criteria    Json?
+  project_benefit_ids            Json?
+  project_success_measures       Json?
+  planned_start_date             DateTime?
+  planned_end_date               DateTime?
+  contract_dates                 Json?
+  registration_milestones        Json?
+  approved_project_budget_sar    Decimal?  @db.Decimal(18, 2)
+  contract_value_sar             Decimal?  @db.Decimal(18, 2)
+  project_contingency_sar        Decimal?  @db.Decimal(18, 2)
+  project_funding_profile        Json? // [{ fiscal_year: Int, amount_sar: Decimal }]
+  contract_id                    String?   @db.VarChar(255)
+  purchase_order_id              String?   @db.VarChar(255)
+  payment_milestones             Json? // [{ milestone: String, due_date: Date, amount_sar: Decimal, trigger: String }]
+  initial_risk_rating            String?   @db.VarChar(255)
+  initial_risks                  Json?
+  project_assumptions            Json?
+  project_constraints            Json?
+  project_dependencies           Json?
+  governance_tier                String?   @db.VarChar(255)
+  steering_committee_required    Boolean?
+  project_reporting_frequency    String?   @db.VarChar(255)
+  next_lifecycle_phase           String?   @db.VarChar(255)
+  check_approved_demand          Boolean?
+  check_approved_budget          Boolean?
+  check_procurement_complete     Boolean?
+  check_document_pack            Boolean?
+  duplicate_project_check        String?   @db.VarChar(255)
+  registration_decision          String?   @db.VarChar(255)
+  registration_comments          String?   @db.Text
+  external_project_id            String?   @db.VarChar(255)
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @db.VarChar(64)
+  entity_type             String            @db.VarChar(64)
+  parent_record_id        String?           @db.VarChar(255)
+  entry_route             EntryRoute
+  lifecycle_phase         String?           @db.VarChar(64)
+  current_stage_code      String?           @db.VarChar(255)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  rag_status              RagStatus?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  delegate_user_id        String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  version_status          VersionStatus?
+  created_by              String            @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  submitted_by            String?           @db.VarChar(128)
+  submitted_at            DateTime?
+  source_system           String?           @db.VarChar(64)
+  external_system_key     String?           @db.VarChar(255)
+  last_sync_at            DateTime?
+  data_classification     String?           @db.VarChar(64)
+  retention_class         String?           @db.VarChar(255)
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  master_trace         MasterTrace          @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  procurement_item     ProcurementItem?     @relation(fields: [procurement_item_id], references: [procurement_item_id], onDelete: Restrict)
+  demand               Demand?              @relation(fields: [demand_id], references: [demand_id], onDelete: Restrict)
+  benefit_realizations BenefitRealization[]
+
+  @@unique([procurement_item_id])
+  @@index([master_trace_id])
+  @@index([demand_id])
+  @@map("project_registration")
+}
+
+// ─────────────────────────────────────────────
+// Phase 2 — Value Realization (post-implementation ROI)
+// ─────────────────────────────────────────────
+
+model BenefitRealization {
+  realization_id   String    @id @db.VarChar(64)
+  project_id       String    @db.VarChar(64)
+  objective_id     String    @db.VarChar(64)
+  master_trace_id  String?   @db.VarChar(64)
+  benefit_name     String    @db.VarChar(255)
+  benefit_unit     String?   @db.VarChar(64)
+  baseline_value   Decimal   @db.Decimal(18, 4)
+  target_value     Decimal   @db.Decimal(18, 4)
+  realized_value   Decimal   @db.Decimal(18, 4)
+  measurement_date DateTime
+  horizon_months   Int       @default(12)
+  confidence_pct   Decimal?  @db.Decimal(5, 2)
+  commentary       String?   @db.Text
+  created_by       String    @db.VarChar(128)
+  created_at       DateTime  @default(now())
+  modified_at      DateTime? @updatedAt
+  is_active        Boolean   @default(true)
+
+  project   ProjectRegistration @relation(fields: [project_id], references: [project_id], onDelete: Restrict)
+  objective StrategicObjective  @relation(fields: [objective_id], references: [objective_id], onDelete: Restrict)
+
+  @@index([project_id])
+  @@index([objective_id])
+  @@index([master_trace_id])
+  @@index([measurement_date])
+  @@map("benefit_realization")
+}
+
+// ─────────────────────────────────────────────
+// Budget Consolidation Snapshot (13_Budget Consolidation)
+// ─────────────────────────────────────────────
+
+model BudgetConsolidation {
+  consolidation_id               String   @id @db.VarChar(64)
+  budget_submission_id           String   @unique @db.VarChar(64)
+  // CON-002 to CON-010 (existing)
+  included_business_units        Json?
+  included_demand_count          Int      @default(0)
+  excluded_demand_count          Int      @default(0)
+  requested_amount_sar           Decimal? @db.Decimal(18, 2) // CON-005
+  recommended_amount_sar         Decimal? @db.Decimal(18, 2) // CON-006
+  funding_ceiling_sar            Decimal  @db.Decimal(18, 2) // CON-007
+  funding_gap_sar                Decimal  @db.Decimal(18, 2) // CON-008
+  strategic_adhoc_mix            Json? // CON-009
+  capex_opex_mix                 Json? // CON-010
+  // CON-011 to CON-021 (previously missing)
+  commitment_mix                 Json? // CON-011 New/Existing/Renewal/Run-cost split
+  multi_year_commitment_profile  Json? // CON-012 FY + value
+  priority_distribution          Json? // CON-013 Band + count + value
+  demand_line_reconciliation     String   @db.VarChar(255) // CON-014
+  line_phasing_reconciliation    String?  @db.VarChar(32) // CON-015 Pass | Fail
+  accounting_dimensions_check    String?  @db.VarChar(32) // CON-016 Pass | Warning | Fail
+  unresolved_findings_count      Int      @default(0) // CON-017
+  funding_recommendation_summary String?  @db.Text // CON-018 (mandatory before CTO submit)
+  specific_decision_items        Json? // CON-019 repeatable exception items
+  consolidation_risks            Json? // CON-020 repeatable risk items
+  proposed_conditions            Json? // CON-021 repeatable conditions
+  // CON-022 to CON-025 (approval)
+  submitted_version_hash         String?  @db.VarChar(128) // CON-022
+  cto_decision                   String?  @db.VarChar(64) // CON-023 Approved | Approved_Cond | Returned | Rejected
+  return_allocation              Json? // CON-024 repeatable entity + owner + due
+  decision_comments              String?  @db.Text // CON-025
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String            @default("") @db.VarChar(64)
+  entity_type             String            @default("BUDGET_CONSOLIDATION") @db.VarChar(64)
+  entry_route             EntryRoute        @default(STRATEGIC)
+  record_status           String?           @db.VarChar(64)
+  approval_status         ApprovalDecision?
+  owning_business_unit_id String?           @db.VarChar(255)
+  record_owner_user_id    String?           @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int               @default(1)
+  created_by              String            @default("system") @db.VarChar(128)
+  created_at              DateTime          @default(now())
+  modified_by             String?           @db.VarChar(128)
+  modified_at             DateTime?         @updatedAt
+  is_active               Boolean           @default(true)
+  is_locked               Boolean           @default(false)
+
+  budget_submission BudgetSubmission @relation(fields: [budget_submission_id], references: [budget_submission_id], onDelete: Restrict)
+
+  @@index([master_trace_id])
+  @@map("budget_consolidation")
+}
+
+// ─────────────────────────────────────────────
+// Procurement Execution Ledger (15_Procurement Updates)
+// ─────────────────────────────────────────────
+
+model ProcurementStatusUpdate {
+  // PSU-001/002 Identity
+  update_id                   String    @id @db.VarChar(64)
+  procurement_item_id         String    @db.VarChar(64)
+  // PSU-003/004 Stage transition (existing)
+  previous_stage              String    @db.VarChar(64)
+  new_stage                   String    @db.VarChar(64)
+  // PSU-005/006 Status + timestamp (previously missing)
+  overall_status              String?   @db.VarChar(64) // Not Started | On Track | At Risk | Delayed | On Hold | Completed | Cancelled
+  update_at                   DateTime  @default(now()) // PSU-006 effective timestamp
+  // PSU-007/008 Progress + milestone
+  progress_pct                Decimal   @db.Decimal(5, 2)
+  milestone_code              String?   @db.VarChar(64) // PSU-008
+  // PSU-009/010/011 Milestone dates + variance
+  planned_milestone_date      DateTime?
+  actual_milestone_date       DateTime?
+  milestone_variance_days     Int? // PSU-011 signed integer (positive = late)
+  // PSU-012/013/014/015 SAP/ERP references
+  purchase_requisition_id     String?   @db.VarChar(128) // PSU-012
+  purchase_requisition_status String?   @db.VarChar(64) // PSU-013
+  rfx_id                      String?   @db.VarChar(128) // PSU-014
+  award_id                    String?   @db.VarChar(128) // PSU-015
+  // PSU-016/017 PO + Contract
+  purchase_order_id           String?   @db.VarChar(128)
+  contract_id                 String?   @db.VarChar(128)
+  // PSU-018/019/020/021 Value tracking
+  commitment_value            Decimal?  @db.Decimal(18, 2) // PSU-018 transaction currency
+  commitment_value_sar        Decimal?  @db.Decimal(18, 2) // PSU-019
+  invoiced_value_sar          Decimal?  @db.Decimal(18, 2) // PSU-020
+  paid_value_sar              Decimal?  @db.Decimal(18, 2) // PSU-021
+  forecast_final_value_sar    Decimal   @db.Decimal(18, 2) // PSU-022
+  // PSU-023/024 Delivery
+  delivered_quantity          Decimal?  @db.Decimal(18, 4) // PSU-023
+  accepted_quantity_value     Json? // PSU-024 { quantity, sar_value }
+  // PSU-025 Forecast completion
+  forecast_completion_date    DateTime? // PSU-025
+  // PSU-026/027/028/029/030 Exception handling (previously missing from model)
+  exception_reason            String?   @db.Text // PSU-026 (CRITICAL — required for delayed/at-risk)
+  impact_assessment           String?   @db.Text // PSU-027
+  corrective_action           String?   @db.Text // PSU-028
+  action_owner_user_id        String?   @db.VarChar(128) // PSU-029
+  action_due_date             DateTime? // PSU-030
+  // PSU-031/032 Evidence + validation
+  evidence_attachment_ids     Json? // PSU-031
+  update_validation_status    String    @db.VarChar(64) // PSU-032 Not Required | Pending | Validated | Returned
+
+  // Shared fields (04_Shared Fields)
+  master_trace_id         String     @default("") @db.VarChar(64)
+  entity_type             String     @default("PROCUREMENT_STATUS_UPDATE") @db.VarChar(64)
+  entry_route             EntryRoute @default(STRATEGIC)
+  record_status           String?    @db.VarChar(64)
+  owning_business_unit_id String?    @db.VarChar(255)
+  record_owner_user_id    String?    @db.VarChar(128)
+  fiscal_year             Int?
+  version_number          Int        @default(1)
+  created_by              String     @default("system") @db.VarChar(128)
+  created_at              DateTime   @default(now())
+  modified_by             String?    @db.VarChar(128)
+  modified_at             DateTime?  @updatedAt
+  is_active               Boolean    @default(true)
+  is_locked               Boolean    @default(false)
+
+  procurement_item ProcurementItem @relation(fields: [procurement_item_id], references: [procurement_item_id], onDelete: Restrict)
+
+  @@index([procurement_item_id])
+  @@index([new_stage])
+  @@index([overall_status])
+  @@index([master_trace_id])
+  @@map("procurement_status_update")
+}
+
+// ─────────────────────────────────────────────
+// Governance, Evidence & Comments (BR-008 / BR-026 / BR-027)
+// Sheets: 17_Approvals, 18_Evidence Comments
+// ─────────────────────────────────────────────
+
+model ApprovalTransaction {
+  approval_id             String              @id @db.VarChar(64)
+  entity_type             String              @db.VarChar(64)
+  entity_id               String              @db.VarChar(64)
+  entity_version          Int
+  version_hash            String              @db.VarChar(128)
+  gate_code               String              @db.VarChar(64)
+  approval_sequence       Int
+  approval_group          String?             @db.VarChar(255)
+  approver_role           String              @db.VarChar(255)
+  approver_user_id        String              @db.VarChar(128)
+  authority_basis         String              @db.VarChar(255)
+  delegated_from_user_id  String?             @db.VarChar(128)
+  assigned_at             DateTime
+  sla_due_at              DateTime
+  decision_at             DateTime?
+  elapsed_approval_hours  Decimal?            @db.Decimal(18, 2)
+  is_overdue              Boolean?
+  decision                DecisionEnum
+  decision_comments       String?             @db.Text
+  approval_conditions     Json?
+  return_stage_code       String?             @db.VarChar(255)
+  affected_record_ids     Json?
+  resubmission_number     Int                 @default(0)
+  signature_evidence      Json?
+  decision_attachment_ids Json?
+  notification_recipients Json?
+  notification_status     NotificationStatus?
+  conflict_declaration    String?             @db.VarChar(512)
+  lock_release_action     LockReleaseAction?
+  version_number          Int                 @default(1)
+  created_by              String              @db.VarChar(128)
+  created_at              DateTime            @default(now())
+  is_locked               Boolean             @default(true)
+  master_trace_id         String?             @db.VarChar(64)
+
+  master_trace MasterTrace? @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+
+  @@index([entity_type, entity_id])
+  @@index([gate_code])
+  @@index([approver_user_id])
+  @@index([master_trace_id])
+  @@index([decision])
+  @@map("approval_transaction")
+}
+
+model Attachment {
+  attachment_id               String                    @id @db.VarChar(64)
+  linked_entity               Json?
+  document_type               String                    @db.VarChar(128)
+  file_name                   String                    @db.VarChar(255)
+  file_version                String                    @db.VarChar(50)
+  mime_type                   String                    @db.VarChar(128)
+  file_size_bytes             Int
+  file_checksum               String                    @db.VarChar(128)
+  virus_scan_status           VirusScanStatus
+  attachment_classification   AttachmentClassification?
+  attachment_effective_expiry Json?
+  uploaded_by_at              Json?
+  uploaded_by                 String                    @db.VarChar(128)
+  uploaded_at                 DateTime                  @default(now())
+  is_locked                   Boolean                   @default(false)
+  created_by                  String                    @db.VarChar(128)
+  created_at                  DateTime                  @default(now())
+  master_trace_id             String?                   @db.VarChar(64)
+  version_number              Int                       @default(1)
+
+  master_trace MasterTrace? @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+
+  @@index([virus_scan_status])
+  @@index([master_trace_id])
+  @@index([file_checksum])
+  @@map("attachment")
+}
+
+model Comment {
+  comment_id          String           @id @db.VarChar(64)
+  linked_entity_field Json?
+  comment_type        CommentType?
+  comment_text        String           @db.Text
+  parent_comment_id   String?          @db.VarChar(64)
+  resolution_status   ResolutionStatus
+  comment_assignment  Json?
+  comment_resolution  Json?
+  linked_entity       Json?
+  uploaded_by         String           @db.VarChar(128)
+  created_by          String           @db.VarChar(128)
+  created_at          DateTime         @default(now())
+  is_locked           Boolean          @default(false)
+  master_trace_id     String?          @db.VarChar(64)
+  version_number      Int              @default(1)
+
+  master_trace MasterTrace? @relation(fields: [master_trace_id], references: [master_trace_id], onDelete: Restrict)
+  parent       Comment?     @relation("CommentThread", fields: [parent_comment_id], references: [comment_id], onDelete: Restrict)
+  replies      Comment[]    @relation("CommentThread")
+
+  @@index([parent_comment_id])
+  @@index([resolution_status])
+  @@index([master_trace_id])
+  @@map("comment")
+}
+
+// ─────────────────────────────────────────────
+// UAT Pilot Feedback (MVP feedback channel)
+// ─────────────────────────────────────────────
+
+enum UatIssueType {
+  BUG
+  UI_UX
+  FEATURE_REQUEST
+}
+
+model UatFeedback {
+  feedback_id       String       @id @db.VarChar(64)
+  issue_type        UatIssueType
+  description       String       @db.Text
+  page_path         String       @db.VarChar(512)
+  master_trace_id   String?      @db.VarChar(64)
+  submitted_by      String       @db.VarChar(128)
+  submitted_by_role String?      @db.VarChar(128)
+  user_agent        String?      @db.VarChar(512)
+  status            String       @default("OPEN") @db.VarChar(32)
+  created_at        DateTime     @default(now())
+
+  @@index([issue_type])
+  @@index([master_trace_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("uat_feedback")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Executive One-Pager Snapshot (PI-11)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ExecutiveSnapshot {
+  snapshot_id             String    @id @db.VarChar(64)
+  reporting_period        String    @db.VarChar(20)    // YYYY-Qn or YYYY-MM
+  fiscal_year             Int
+  data_as_of_date         DateTime
+  // Publish state
+  is_published            Boolean   @default(false)
+  published_at            DateTime?
+  published_by            String?   @db.VarChar(128)
+  hold_at                 DateTime?
+  held_by                 String?   @db.VarChar(128)
+  // Quality gate result (BR-044)
+  quality_status          String    @default("PENDING") @db.VarChar(32) // PASS | FAIL | PENDING
+  quality_block_reasons   Json?
+  // Snapshot stats
+  approved_strategy_count Int       @default(0)
+  validated_demand_count  Int       @default(0)
+  approved_budget_count   Int       @default(0)
+  // Metadata
+  created_by              String    @db.VarChar(128)
+  created_at              DateTime  @default(now())
+  modified_by             String?   @db.VarChar(128)
+  modified_at             DateTime? @updatedAt
+
+  @@index([reporting_period])
+  @@index([is_published])
+  @@map("executive_snapshot")
+}

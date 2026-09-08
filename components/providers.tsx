@@ -1,12 +1,20 @@
 'use client'
 
+import { SessionProvider } from 'next-auth/react'
 import { AppProvider } from '@/lib/app-context'
-import { AppShell } from '@/components/app-shell'
+import { AuthProvider } from '@/src/providers/AuthProvider'
 
+/**
+ * Root providers.
+ * - SessionProvider: enterprise SSO (NextAuth / Entra ID) for MVP
+ * - AuthProvider: POC demo persona switcher (AUTH_MODE=demo, default)
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AppProvider>
-      <AppShell>{children}</AppShell>
-    </AppProvider>
+    <SessionProvider>
+      <AppProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </AppProvider>
+    </SessionProvider>
   )
 }

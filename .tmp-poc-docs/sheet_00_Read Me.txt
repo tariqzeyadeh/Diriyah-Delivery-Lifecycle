@@ -1,0 +1,33 @@
+# 00_Read Me (32 rows)
+PRE-INITIATION PROCESS — POC TEMPLATE PACK |  |  |  |  |  |  | 
+Developer-ready field catalogue, workflow rules, relationships, approvals, Power BI one-page report specification and acceptance tests |  |  |  |  |  |  | 
+Process | Pre-Initiation Process | Implementation interpretation |  |  |  | 
+POC Version | 1.0 | The business templates are specifications for platform forms and database entities. Every entity inherits the shared control fields in Tab 04. 'Required' means always mandatory for the applicable route/entity; 'Conditional' means mandatory when the stated trigger is true. Organization-specific SLAs, authority limits, tax policies and code lists are configuration—not hardcoded assumptions. |  |  |  | 
+Prepared for | Technology Platform POC |  |  |  |  | 
+Prepared on | 46267 |  |  |  |  | 
+Base Currency | SAR |  |  |  |  | 
+Core Traceability Rule | One immutable Master Traceability ID + unique child entity IDs |  |  |  |  | 
+Workbook contents |  |  |  | Legend and key decisions |  |  | 
+Sheet | Purpose | Deliverable Type | Required | Mandatory for the applicable entity/route
+01_Process Stages | End-to-end workflow, gates, parallel activities and return loops | Workflow | Conditional | Mandatory when the stated trigger is true
+02_ID Relationships | Entity keys, cardinality, ID patterns and version rules | Data Model | System / Derived | Read-only value calculated or populated by workflow/integration
+03_Roles Access | Role responsibilities, permissions and segregation controls | Security | Returned | Revision loop; history retained; a new working version is created
+04_Shared Fields | Inherited identity, routing, audit, integration and governance fields | Data Model | Rejected / Closed | Terminal disposition; intentionally distinct from a return
+05_Strategy | Technology strategy capture and readiness | Template | BSC score weights | POC default: KPI 70%, project progress 20%, budget performance 10%; configurable and versioned
+06_Objectives | Strategic objective definition and performance fields | Template
+07_KPI Register | Governed KPI definitions, targets, thresholds and lineage | Template | Developer implementation order |  |  | 
+08_KPI Updates | Periodic KPI actuals, validation, quality and action fields | Template | 1 | Build IDs, relationships, shared audit/version fields and lookups | Tabs 02, 04, 20 | Foundation
+09_Balanced Scorecard | Strategy scorecard and delivery/budget contribution fields | Template | 2 | Configure roles, data classification and approval/version controls | Tabs 03, 17, 18 | Control
+10_Demand Business Case | Comprehensive strategic and ad-hoc demand/business case | Template | 3 | Implement strategy, objective, KPI and BSC entities | Tabs 05–09 | Strategic route
+11_Budget Header | Budget cycle metadata, totals, reconciliations and approval | Template | 4 | Implement demand/business case and conditional reviews | Tab 10 | Both routes
+12_Budget Lines | Detailed cost drivers, accounting, phasing and tracking | Template | 5 | Implement budget header, lines, calculations and consolidation | Tabs 11–13 | Finance
+13_Budget Consolidation | Portfolio cuts, controls, recommendation and CTO decision | Template | 6 | Implement procurement plan/history and PMO project registration | Tabs 14–16 | Execution
+14_Procurement Plan | Executable procurement items, readiness and outcomes | Template | 7 | Implement Power BI model, controls and execute acceptance tests | Tabs 19, 21, 22 | Reporting & QA
+15_Procurement Updates | Append-only execution milestones, values and exceptions | Template
+16_Project Registration | PMO project registration and next-phase handoff | Template | POC configuration items to confirm before production |  |  | 
+17_Approvals | Generic approval, return, condition and delegation record | Control | Approval SLAs and business calendar; delegation-of-authority thresholds; corporate data-classification/retention codes; SAP company/cost-center/GL/tax mappings; procurement policy thresholds and milestone weights; BSC scoring/threshold policy; mandatory document types; source-system/API mappings; Power BI refresh frequency and row-level security groups. |  |  | 
+18_Evidence Comments | Attachments, evidence, comments and finding resolution | Control |  |  |  | 
+19_One-Page Report | Power BI one-page content, measures and display rules | Reporting |  |  |  | 
+20_Status Lookups | Canonical status codes and transition guidance | Configuration |  |  |  | 
+21_Business Rules | Cross-stage enforceable business rules | Requirements |  |  |  | 
+22_Acceptance Tests | Minimum POC end-to-end acceptance scenarios | Testing |  |  |  | 

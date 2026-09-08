@@ -1,0 +1,34 @@
+The process name is (Pre-Initiation Process)
+[Process Start] through the system, can start from two points:
+Strategy & Governance Team (to fill in the strategy, strategic objectives, and KPIs)
+Business Teams: when the request is a non-strategic request (Ad hoc or special request for example)
+If started by “
+Strategy & Governance Team
+” the strategy & governance team will develop the strategy and enter the relevant information in the platform to track its progress for:
+Strategy performance
+Strategy budget tracking
+Strategic objectives
+KPIs
+Balanced scorecard
+Then strategy inputs will go to the CTO for approval, if not approved return to step 2 if approved continue
+The flow after approval from point #3 will go in parallel to two departments:
+Commercial & Budgeting to develop the budget (template should include all related budgeting fields for such requests
+Business Teams (business
+owner
+) to submit demand (demand template should be comprehensive and includes all business case required fields)
+Commercial & Budgeting validates the business team’s submitted demand for budgeting purposes
+Budgeting team consolidates and submits budget for approval
+CTO approves / rejects budget, if approved continue, if rejected return to point #4
+After budget approval, the request goes to commercial and budgeting team to prepare the procurement plan and start execution of the procurement plan, the status of the items of the procurement should be available and linked to the strategy, items in the procurement plan can include:
+Projects
+Licenses
+Equipment
+…etc.
+Once procurement plan is executed the projects that
+was
+executed will be forwarded to the PMO to register the projects
+The platform should link the projects (based on the status and progress) to the balanced scorecard for strategy execution performance, strategic objectives, KPIs …etc.
+NOTE: the entries should maintain the same special identification code in all phases to allow proper tracking.
+The platform will consolidate all information and provide phase status report and view (can be applicable through
+PowerBI
+) and should be a “one-pager” report.
