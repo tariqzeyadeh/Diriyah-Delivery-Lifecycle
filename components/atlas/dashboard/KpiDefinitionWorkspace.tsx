@@ -179,21 +179,19 @@ export function KpiDefinitionWorkspace({
         <div className="space-y-4">
           {/* Tabs */}
           <div className="flex gap-4 border-b border-border">
-            {tabs.map((t) => (
+            {tabs.map((tabItem) => (
               <button
-                key={t.id}
+                key={tabItem.id}
                 type="button"
-                onClick={() => setTab(t.id)}
+                onClick={() => setTab(tabItem.id)}
                 className={cn(
                   'flex-1 border-b-2 px-3 py-2 text-xs font-semibold transition-all',
-                  tab === t.id
+                  tab === tabItem.id
                     ? 'border-diriyah-primary text-diriyah-primary'
                     : 'border-transparent text-text-muted hover:text-text',
                 )}
               >
-                )}
-              >
-                {t.label}
+                {tabItem.label}
               </button>
             ))}
           </div>
