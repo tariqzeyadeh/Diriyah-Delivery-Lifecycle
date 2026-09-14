@@ -63,8 +63,17 @@ export async function initiatePortfolioRecord(
   ).slice(0, 255)
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const master_trace_id = generateMasterTraceId()
+    const result = await prisma.$transaction(
+      async (tx) => {
+      let master_trace_id = generateMasterTraceId()
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const clash = await tx.masterTrace.findUnique({
+          where: { master_trace_id },
+          select: { master_trace_id: true },
+        })
+        if (!clash) break
+        master_trace_id = generateMasterTraceId()
+      }
 
       await tx.masterTrace.create({
         data: {
@@ -117,7 +126,9 @@ export async function initiatePortfolioRecord(
         child_id: demand_id,
         workspace: 'demand' as const,
       }
-    })
+      },
+      { maxWait: 15_000, timeout: 60_000 },
+    )
 
     revalidateTag(CACHE_TAGS.PORTFOLIO_METRICS, 'max')
     auditLog({

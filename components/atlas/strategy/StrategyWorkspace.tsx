@@ -918,8 +918,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
         <div className="flex items-start gap-3 rounded-md border border-diriyah-primary/30 bg-diriyah-primary/10 px-4 py-3 text-sm text-text">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-diriyah-primary" />
           <p>
-            This strategy is <strong>locked</strong> ({recordStatus}). CTO review is in progress at Gate G-S1.
-            You may not edit until it is returned or approved.
+            This strategy is <strong>locked</strong> ({recordStatus}). Seeded demo record
+            STR-2027-0001 is already approved. Use <strong>+ New Record</strong> → Strategic
+            Initiative to create a draft you can edit and save.
           </p>
         </div>
       )}
@@ -1103,6 +1104,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">
               <span className="text-sm font-medium text-text">Mandate Statement</span>
+              <p className="text-xs text-text-muted">
+                Required before submit. This is the strategy mandate — no separate letter file.
+              </p>
               <textarea
                 className="input-base min-h-24 py-3"
                 value={form.mandate_statement}

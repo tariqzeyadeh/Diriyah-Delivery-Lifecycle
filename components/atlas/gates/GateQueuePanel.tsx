@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import {
   CheckCircle2,
   RotateCcw,
@@ -13,9 +13,11 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/src/i18n/navigation'
-import { approveStrategyGate, approveBudgetGate, returnGate, approveWithConditions } from '@/src/actions/gates'
+import { approveStrategyGate, approveBudgetGate, returnGate, approveWithConditions, listBlockingFindings } from '@/src/actions/gates'
+import { resolveComment } from '@/src/actions/evidence'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { OfficialTag, RecordNotice } from '@/components/atlas/records'
+import { Link } from '@/src/i18n/navigation'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -97,6 +99,27 @@ function GateItemCard({ item, gateCode, entityType, actorId, onActionDone }: Gat
   const [conditions, setConditions] = useState('')
   const [pending, startTransition] = useTransition()
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [findings, setFindings] = useState<
+    { comment_id: string; comment_text: string; uploaded_by: string }[]
+  >([])
+
+  useEffect(() => {
+    if (gateCode !== 'G-B1') return
+    void listBlockingFindings(item.masterTraceId).then((rows) =>
+      setFindings(rows.map((r) => ({ comment_id: r.comment_id, comment_text: r.comment_text, uploaded_by: r.uploaded_by }))),
+    )
+  }, [gateCode, item.masterTraceId])
+
+  function handleResolveFinding(commentId: string) {
+    startTransition(async () => {
+      const res = await resolveComment(commentId, actorId)
+      if (res.ok) {
+        setFindings((rows) => rows.filter((r) => r.comment_id !== commentId))
+      } else {
+        setResult({ ok: false, message: res.error })
+      }
+    })
+  }
 
   function handleApprove() {
     startTransition(async () => {
@@ -239,6 +262,41 @@ function GateItemCard({ item, gateCode, entityType, actorId, onActionDone }: Gat
           <RecordNotice tone={result.ok ? 'success' : 'error'} title={result.message} role="alert" />
         </div>
       )}
+
+      {gateCode === 'G-B1' && findings.length > 0 ? (
+        <div className="space-y-2 border-t border-border px-4 py-3">
+          <p className="text-xs font-semibold text-diriyah-red">
+            {findings.length} unresolved validation finding(s) — resolve before Approve (BR-027)
+          </p>
+          <ul className="space-y-2">
+            {findings.map((f) => (
+              <li
+                key={f.comment_id}
+                className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border bg-diriyah-bg-alt/40 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm text-text">{f.comment_text}</p>
+                  <p className="mt-0.5 text-[11px] text-text-muted">{f.uploaded_by}</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn h-8 shrink-0 border-border bg-white px-3 text-xs"
+                  disabled={pending}
+                  onClick={() => handleResolveFinding(f.comment_id)}
+                >
+                  Resolve
+                </button>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href={`/traceability/${encodeURIComponent(item.masterTraceId)}/evidence`}
+            className="text-xs font-semibold text-diriyah-accent no-underline hover:underline"
+          >
+            Open evidence thread
+          </Link>
+        </div>
+      ) : null}
 
       {/* Return for revision form */}
       {showReturn && (

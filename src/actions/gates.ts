@@ -341,10 +341,11 @@ export async function approveBudgetGate(
         throw new Error('BudgetSubmission is already APPROVED.')
       }
 
-      // BR-027 — unresolved comments / findings on this Master Trace block approval
+      // BR-027 — only validation findings block funding (not discussion / return notes)
       const unresolved = await tx.comment.count({
         where: {
           master_trace_id,
+          comment_type: 'VALIDATION_FINDING',
           resolution_status: {
             in: [ResolutionStatus.OPEN, ResolutionStatus.RESPONDED, ResolutionStatus.REOPENED],
           },
@@ -809,6 +810,7 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
             include: {
               status_updates: { orderBy: { update_id: 'desc' }, take: 1 },
             },
+            orderBy: { created_at: 'desc' },
           },
         },
       },
@@ -818,6 +820,7 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
             include: {
               status_updates: { orderBy: { update_id: 'desc' }, take: 1 },
             },
+            orderBy: { created_at: 'desc' },
           },
         },
       },
@@ -838,6 +841,7 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
       vendor_id: string | null
       pmo_handoff_readiness: string | null
       schedule_variance_days: number | null
+      created_at: string
     }
   >()
 
@@ -853,6 +857,7 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
         vendor_id: item.vendor_id,
         pmo_handoff_readiness: item.pmo_handoff_readiness ?? null,
         schedule_variance_days: item.schedule_variance_days ?? null,
+        created_at: item.created_at.toISOString(),
       })
     }
   }
@@ -868,6 +873,7 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
         vendor_id: item.vendor_id,
         pmo_handoff_readiness: item.pmo_handoff_readiness ?? null,
         schedule_variance_days: item.schedule_variance_days ?? null,
+        created_at: item.created_at.toISOString(),
       })
     }
   }
@@ -878,7 +884,11 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
       master_trace_id: submission.master_trace_id,
       record_status: submission.record_status,
     },
-    items: Array.from(byId.values()),
+    items: Array.from(byId.values()).sort((a, b) => {
+      const byDate = b.created_at.localeCompare(a.created_at)
+      if (byDate !== 0) return byDate
+      return b.procurement_item_id.localeCompare(a.procurement_item_id)
+    }),
   }
 }
 
@@ -1156,6 +1166,26 @@ export async function createAttachmentRecord(payload: {
     })
     return { ok: false as const, error: message }
   }
+}
+
+export async function listBlockingFindings(master_trace_id: string) {
+  if (!master_trace_id?.trim()) return []
+  return prisma.comment.findMany({
+    where: {
+      master_trace_id,
+      comment_type: 'VALIDATION_FINDING',
+      resolution_status: {
+        in: [ResolutionStatus.OPEN, ResolutionStatus.RESPONDED, ResolutionStatus.REOPENED],
+      },
+    },
+    select: {
+      comment_id: true,
+      comment_text: true,
+      uploaded_by: true,
+      created_at: true,
+    },
+    orderBy: { created_at: 'asc' },
+  })
 }
 
 export async function createCommentRecord(payload: {
@@ -1873,7 +1903,7 @@ export async function getGatePmoQueue() {
       created_at: true,
       demand: { select: { demand_id: true, demand_title: true } },
     },
-    orderBy: { created_at: 'asc' },
+    orderBy: { created_at: 'desc' },
   })
 }
 

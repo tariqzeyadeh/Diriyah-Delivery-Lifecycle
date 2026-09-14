@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       className={inter.variable}
       suppressHydrationWarning
     >
-      <body className="antialiased bg-diriyah-bg-primary text-text">
+      <body className="antialiased bg-diriyah-bg-primary text-text" suppressHydrationWarning>
         {children}
       </body>
     </html>

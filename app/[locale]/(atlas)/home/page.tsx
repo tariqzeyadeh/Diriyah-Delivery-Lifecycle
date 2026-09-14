@@ -1,28 +1,45 @@
 import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
-import { formatSar, getCockpitMetrics, listMasterTraceIds } from '@/lib/atlas/dashboard-data'
+import {
+  emptyCockpitMetrics,
+  formatSar,
+  getCockpitMetrics,
+  listMasterTraceIds,
+} from '@/lib/atlas/dashboard-data'
+import { settleDatabase } from '@/lib/atlas/db-fallback'
 import { SlaWorkloadDonut } from '@/components/atlas/dashboard/SlaWorkloadDonut'
 import { StageHealthBars } from '@/components/atlas/dashboard/StageHealthBars'
 import { NewRecordButton } from '@/components/atlas/home/NewRecordButton'
 import { GuidedTour } from '@/components/atlas/GuidedTour'
 import { RiskAlertBadge, RiskAlertsPanel } from '@/components/atlas/RiskAlertBadge'
 import { computePortfolioRiskAlerts, riskForTrace } from '@/src/lib/predictive-risk'
-import { MetricTile, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { MetricTile, PageIntro, RecordNotice, RegisterTable } from '@/components/atlas/records'
 import { sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
 
 export default async function HomeCockpitPage() {
   const t = await getTranslations('common')
   const th = await getTranslations('home')
-  const [metrics, traces, riskAlerts] = await Promise.all([
-    getCockpitMetrics(),
-    listMasterTraceIds(8),
-    computePortfolioRiskAlerts({ limit: 24 }),
+  const [metricsSettled, tracesSettled, riskSettled] = await Promise.all([
+    settleDatabase(() => getCockpitMetrics(), emptyCockpitMetrics()),
+    settleDatabase(() => listMasterTraceIds(8), []),
+    settleDatabase(() => computePortfolioRiskAlerts({ limit: 24 }), []),
   ])
+  const metrics = metricsSettled.value
+  const traces = tracesSettled.value
+  const riskAlerts = riskSettled.value
+  const databaseUnreachable =
+    metricsSettled.unreachable || tracesSettled.unreachable || riskSettled.unreachable
 
   return (
     <div className="space-y-6">
       <GuidedTour />
+
+      {databaseUnreachable ? (
+        <RecordNotice title={t('databaseUnreachable')} tone="warning" role="alert">
+          {t('databaseUnreachableHint')}
+        </RecordNotice>
+      ) : null}
 
       <PageIntro
         eyebrow={th('greeting')}
@@ -32,11 +49,11 @@ export default async function HomeCockpitPage() {
           <>
             <Link
               href="/value-realization"
-              className="btn h-9 border-border bg-white px-3 text-xs no-underline"
+              className="btn h-9 shrink-0 whitespace-nowrap border-border bg-white px-3 text-xs no-underline"
             >
               {t('valueRealization')}
             </Link>
-            <NewRecordButton />
+            <NewRecordButton compact />
           </>
         }
       />

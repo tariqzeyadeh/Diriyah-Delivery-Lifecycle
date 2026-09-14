@@ -743,8 +743,12 @@ export function DemandWorkspace({
         <div className="flex items-start gap-3 rounded-md border border-diriyah-amber/40 bg-diriyah-amber/10 px-4 py-3 text-sm text-text">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-diriyah-primary" />
           <p>
-            Read-only for <strong>{currentUser.role}</strong>. Switch to{' '}
-            <strong>Business Owner</strong> to edit this demand case.
+            Read-only for <strong>{currentUser.role}</strong>. Switch the persona in the header
+            to <strong>Ahmed Khalid (Business Owner)</strong>,{' '}
+            <strong>Sarah Al Mansouri (Strategy &amp; Governance)</strong>, or{' '}
+            <strong>Mohammed Al Nuaimi (CTO Office)</strong> to edit an unlocked draft.
+            Seeded records such as DEM-2027-0001 are already funded and stay locked — use{' '}
+            <strong>+ New Record</strong> to create a new demand.
           </p>
         </div>
       )}
@@ -891,7 +895,9 @@ export function DemandWorkspace({
         <section className="overflow-hidden rounded-md border border-border bg-white p-0">
           <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold text-text">Business Case</h2>
-            <p className="text-sm text-text-muted">Problem, scope, outcomes, and success criteria (BR-016).</p>
+            <p className="text-sm text-text-muted">
+              Problem, scope, outcomes, and success criteria (BR-016). This tab is the business case — no separate file upload.
+            </p>
           </div>
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">

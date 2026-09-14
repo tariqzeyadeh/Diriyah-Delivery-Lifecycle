@@ -67,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [currentUser.role],
   )
 
-  const canEditDemand = currentUser.role === 'Business Owner'
+  const canEditDemand =
+    currentUser.role === 'Business Owner' ||
+    currentUser.role === 'Strategy & Governance' ||
+    currentUser.role === 'CTO Office'
   const canSubmitBudgetToCto = currentUser.role === 'Commercial & Budgeting'
   const canEditBudgetGovernance = currentUser.role === 'Commercial & Budgeting' || currentUser.role === 'CTO Office'
 

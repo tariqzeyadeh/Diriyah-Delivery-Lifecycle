@@ -8,6 +8,7 @@ import { PageBackdrop } from './PageBackdrop'
 import { UatFeedbackWidget } from './UatFeedbackWidget'
 import { CopilotChat } from '@/src/components/CopilotChat'
 import { useApp } from '@/lib/app-context'
+import { usePathname } from '@/src/i18n/navigation'
 
 /**
  * Diriyah shell — fixed sidebar on desktop; bottom tabs + hamburger header on mobile.
@@ -16,7 +17,9 @@ export function AtlasLayout({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, login } = useApp()
   const locale = useLocale()
   const t = useTranslations('common')
+  const pathname = usePathname()
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
+  const hideFloatingTools = pathname.includes('/budget')
 
   if (!isLoggedIn) {
     return (
@@ -47,8 +50,8 @@ export function AtlasLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <AtlasMobileTabBar />
-      <CopilotChat />
-      <UatFeedbackWidget />
+      {!hideFloatingTools ? <CopilotChat /> : null}
+      {!hideFloatingTools ? <UatFeedbackWidget /> : null}
     </div>
   )
 }

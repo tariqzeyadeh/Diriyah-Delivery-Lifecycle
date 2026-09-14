@@ -200,7 +200,7 @@ export async function listProcurementItems(limit = 40): Promise<ProcurementListI
   const rows: any[] = await (prisma.procurementItem as any).findMany({
     take: limit,
     where: { ...buScope },
-    orderBy: { created_at: 'desc' },
+    orderBy: [{ created_at: 'desc' }, { procurement_item_id: 'desc' }],
     select: {
       procurement_item_id: true,
       procurement_item_title: true,
@@ -214,16 +214,22 @@ export async function listProcurementItems(limit = 40): Promise<ProcurementListI
     },
   })
 
-  return rows.map((r) => ({
-    procurement_item_id: r.procurement_item_id,
-    procurement_item_title: r.procurement_item_title,
-    procurement_stage: r.procurement_stage ?? null,
-    planned_value_sar: r.planned_value_sar ? Number(r.planned_value_sar) : null,
-    budget_submission_id: r.budget_line?.budget_submission_id ?? null,
-    master_trace_id: r.master_trace_id,
-    created_at: r.created_at.toISOString().slice(0, 10),
-    has_project: Boolean(r.project_registration),
-  }))
+  return rows
+    .map((r) => ({
+      procurement_item_id: r.procurement_item_id,
+      procurement_item_title: r.procurement_item_title,
+      procurement_stage: r.procurement_stage ?? null,
+      planned_value_sar: r.planned_value_sar ? Number(r.planned_value_sar) : null,
+      budget_submission_id: r.budget_line?.budget_submission_id ?? null,
+      master_trace_id: r.master_trace_id,
+      created_at: r.created_at.toISOString().slice(0, 10),
+      has_project: Boolean(r.project_registration),
+    }))
+    .sort((a, b) => {
+      const byDate = b.created_at.localeCompare(a.created_at)
+      if (byDate !== 0) return byDate
+      return b.procurement_item_id.localeCompare(a.procurement_item_id)
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

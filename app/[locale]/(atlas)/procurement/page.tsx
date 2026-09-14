@@ -38,6 +38,7 @@ export default async function ProcurementIndexPage() {
               <th className="px-4 py-3 font-semibold">{t('tableTitle')}</th>
               <th className="px-4 py-3 font-semibold">{t('tableStage')}</th>
               <th className="px-4 py-3 text-end font-semibold">{t('tablePlanned')}</th>
+              <th className="px-4 py-3 font-semibold">{t('tableCreated')}</th>
             </tr>
           </thead>
           <tbody>
@@ -79,6 +80,7 @@ export default async function ProcurementIndexPage() {
                   <td className="px-4 py-3 text-end text-sm tabular-nums text-text">
                     {fmtSar(item.planned_value_sar)}
                   </td>
+                  <td className="px-4 py-3 font-mono text-xs text-text-muted">{item.created_at}</td>
                 </tr>
               )
             })}

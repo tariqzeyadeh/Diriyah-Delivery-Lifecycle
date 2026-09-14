@@ -25,6 +25,7 @@ export type KanbanItem = {
   pmo_handoff_readiness?: string | null
   /** G-20: schedule variance in days (positive = delayed) */
   schedule_variance_days?: number | null
+  created_at?: string
 }
 
 const COMMITMENT_STAGES = ['AWARDED', 'CONTRACT', 'DELIVERY', 'ACCEPTANCE', 'COMPLETED']
@@ -141,6 +142,13 @@ export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialIt
     ) as Record<ProcurementBoardColumn, KanbanItem[]>
     for (const item of items) {
       map[normalizeProcurementStage(item.procurement_stage)].push(item)
+    }
+    for (const key of PROCUREMENT_BOARD_COLUMNS) {
+      map[key].sort((a, b) => {
+        const byDate = (b.created_at ?? '').localeCompare(a.created_at ?? '')
+        if (byDate !== 0) return byDate
+        return b.procurement_item_id.localeCompare(a.procurement_item_id)
+      })
     }
     return map
   }, [items])

@@ -154,7 +154,8 @@ export async function saveStrategy(
   if (!payload.strategy_title?.trim()) return { ok: false, error: 'strategy_title is required.' }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(
+      async (tx) => {
       const existing = await tx.strategy.findUnique({ where: { strategy_id } })
       if (!existing) throw new Error(`Strategy not found: ${strategy_id}`)
       if (existing.is_locked) throw new Error('Strategy is locked — submit a revision request.')
@@ -327,7 +328,9 @@ export async function saveStrategy(
           })
         }
       }
-    })
+    },
+      { maxWait: 15_000, timeout: 60_000 },
+    )
 
     revalidateTag(CACHE_TAGS.STRATEGY_ROLLUP, 'max')
     auditLog({
@@ -437,12 +440,25 @@ export async function submitStrategy(
         }
       }
 
-      // G-17: mandatory document pack check
+      // G-17: document pack. The workspace captures mandate as Mandate Statement
+      // (Context tab) — there is no separate Mandate Letter upload.
       const attachedTypes = await tx.attachment.findMany({
         where: { master_trace_id: strategy.master_trace_id ?? '' },
         select: { document_type: true },
       })
-      const docError = checkDocumentPack('STRATEGY', 'SUBMIT', attachedTypes.map((a) => a.document_type))
+      const presentTypes = attachedTypes.map((a) => a.document_type)
+      if (strategy.mandate_statement?.trim() && !presentTypes.includes('MANDATE_LETTER')) {
+        presentTypes.push('MANDATE_LETTER')
+      }
+      if (!strategy.mandate_statement?.trim()) {
+        throw Object.assign(
+          new Error(
+            'Fill Mandate Statement on the Context & Narrative tab before submitting.',
+          ),
+          { code: 'BR-017' },
+        )
+      }
+      const docError = checkDocumentPack('STRATEGY', 'SUBMIT', presentTypes)
       if (docError) {
         throw Object.assign(new Error(docError), { code: 'BR-017' })
       }

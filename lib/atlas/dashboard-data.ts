@@ -156,6 +156,33 @@ async function fetchCockpitMetrics() {
   })
 }
 
+export type CockpitMetrics = Awaited<ReturnType<typeof fetchCockpitMetrics>>
+
+/** Zeroed cockpit when MySQL is unreachable (Aiven sleep / network). */
+export function emptyCockpitMetrics(): CockpitMetrics {
+  return {
+    kpi: {
+      openMasterRecords: 0,
+      pendingApprovals: 0,
+      totalApprovedBudget: 0,
+    },
+    stageHealth: [
+      { key: 'strategy', label: 'Strategy', total: 0, complete: 0, pct: 0 },
+      { key: 'demand', label: 'Demand', total: 0, complete: 0, pct: 0 },
+      { key: 'budget', label: 'Budget', total: 0, complete: 0, pct: 0 },
+      { key: 'procurement', label: 'Procurement', total: 0, complete: 0, pct: 0 },
+      { key: 'projects', label: 'Projects', total: 0, complete: 0, pct: 0 },
+    ],
+    sla: {
+      withinSla: 1,
+      dueSoon: 0,
+      overdue: 0,
+      total: 1,
+      empty: true,
+    },
+  }
+}
+
 /** Pre-Initiation Cockpit — cached under `portfolio-metrics` */
 export const getCockpitMetrics = unstable_cache(fetchCockpitMetrics, ['cockpit-metrics'], {
   tags: [CACHE_TAGS.PORTFOLIO_METRICS],

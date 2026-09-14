@@ -333,12 +333,20 @@ export async function submitBudget(
         )
       }
 
-      // G-17: mandatory document pack check
+      // G-17: Consolidation Pack + budget lines are the template (CON-018).
+      // There is no separate BUDGET_TEMPLATE file upload.
       const attachedTypes = await tx.attachment.findMany({
         where: { master_trace_id: submission.master_trace_id ?? '' },
         select: { document_type: true },
       })
-      const docError = checkDocumentPack('BUDGET', 'SUBMIT', attachedTypes.map((a) => a.document_type))
+      const presentTypes = attachedTypes.map((a) => a.document_type)
+      if (
+        submission.consolidation?.funding_recommendation_summary?.trim() &&
+        !presentTypes.includes('BUDGET_TEMPLATE')
+      ) {
+        presentTypes.push('BUDGET_TEMPLATE')
+      }
+      const docError = checkDocumentPack('BUDGET', 'SUBMIT', presentTypes)
       if (docError) {
         throw Object.assign(new Error(docError), { code: 'BR-017' })
       }

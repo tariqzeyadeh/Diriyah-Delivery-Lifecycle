@@ -1,10 +1,11 @@
 import { getTranslations } from 'next-intl/server'
 import { listMasterTraceIds } from '@/lib/atlas/dashboard-data'
+import { settleDatabase } from '@/lib/atlas/db-fallback'
 import { ExportTraceabilityButton } from '@/components/atlas/export/ExportTraceabilityButton'
 import { RiskAlertBadge } from '@/components/atlas/RiskAlertBadge'
 import { computePortfolioRiskAlerts, riskForTrace } from '@/src/lib/predictive-risk'
 import { Link } from '@/src/i18n/navigation'
-import { OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { OfficialTag, PageIntro, RecordNotice, RegisterTable } from '@/components/atlas/records'
 import { sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
 
@@ -12,13 +13,22 @@ import { cn } from '@/lib/utils'
 export default async function TraceabilityIndexPage() {
   const t = await getTranslations('common')
   const tIdx = await getTranslations('traceIndex')
-  const [traces, riskAlerts] = await Promise.all([
-    listMasterTraceIds(40),
-    computePortfolioRiskAlerts({ limit: 60 }),
+  const [tracesSettled, riskSettled] = await Promise.all([
+    settleDatabase(() => listMasterTraceIds(40), []),
+    settleDatabase(() => computePortfolioRiskAlerts({ limit: 60 }), []),
   ])
+  const traces = tracesSettled.value
+  const riskAlerts = riskSettled.value
+  const databaseUnreachable = tracesSettled.unreachable || riskSettled.unreachable
 
   return (
     <div className="space-y-6">
+      {databaseUnreachable ? (
+        <RecordNotice title={t('databaseUnreachable')} tone="warning" role="alert">
+          {t('databaseUnreachableHint')}
+        </RecordNotice>
+      ) : null}
+
       <PageIntro
         eyebrow={t('masterTraceability')}
         title={tIdx('pageTitle')}

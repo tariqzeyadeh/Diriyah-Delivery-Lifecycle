@@ -26,7 +26,7 @@ export default async function BudgetIndexPage() {
         eyebrow={`PI-05 · ${tc('module')}`}
         title={t('pageTitle')}
         description={t('pageDesc')}
-        actions={<NewRecordButton />}
+        actions={<NewRecordButton compact />}
       />
 
       {budgets.length === 0 ? (

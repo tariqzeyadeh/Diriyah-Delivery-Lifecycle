@@ -35,7 +35,7 @@ export default async function DemandIndexPage() {
             >
               {t('validateLink')}
             </Link>
-            <NewRecordButton />
+            <NewRecordButton compact />
           </>
         }
       />

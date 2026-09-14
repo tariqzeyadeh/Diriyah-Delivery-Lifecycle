@@ -184,7 +184,8 @@ export async function saveDemand(
   if (!payload.demand_title?.trim()) return { ok: false, error: 'demand_title is required.' }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(
+      async (tx) => {
       const existing = await tx.demand.findUnique({ where: { demand_id } })
       if (!existing) throw new Error(`Demand not found: ${demand_id}`)
       if (existing.is_locked) throw new Error('Demand is locked — submit a revision request.')
@@ -382,7 +383,9 @@ export async function saveDemand(
           })
         }
       }
-    })
+    },
+      { maxWait: 15_000, timeout: 60_000 },
+    )
 
     revalidateTag(CACHE_TAGS.PORTFOLIO_METRICS, 'max')
     auditLog({
@@ -472,15 +475,24 @@ export async function submitDemand(
         )
       }
 
-      // G-17 BR-017b: mandatory document pack check
+      // G-17: the Demand workspace *is* the business case (Business Case tab).
+      // There is no separate BUSINESS_CASE file upload.
       const attachedTypes = await tx.attachment.findMany({
         where: { master_trace_id: demand.master_trace_id ?? '' },
         select: { document_type: true },
       })
       const presentTypes = attachedTypes.map((a) => a.document_type)
+      if (demand.problem_opportunity_statement?.trim() && !presentTypes.includes('BUSINESS_CASE')) {
+        presentTypes.push('BUSINESS_CASE')
+      }
       const docError = checkDocumentPack('DEMAND', 'SUBMIT', presentTypes)
       if (docError) {
-        throw Object.assign(new Error(docError), { code: 'BR-017b' })
+        throw Object.assign(
+          new Error(
+            'Complete the Business Case tab (problem / opportunity statement) before submitting.',
+          ),
+          { code: 'BR-017b' },
+        )
       }
 
       // BR-017: must include a do-nothing option

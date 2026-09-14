@@ -50,6 +50,7 @@ export async function getConsolidationPack(
       budget_submission_id: true,
       master_trace_id: true,
       total_requested_sar: true,
+      funding_ceiling_sar: true,
       entry_route: true,
       record_status: true,
       budget_lines: {
@@ -93,7 +94,11 @@ export async function getConsolidationPack(
     recommended_amount_sar: con?.recommended_amount_sar
       ? Number(con.recommended_amount_sar)
       : null,
-    funding_ceiling_sar: con ? Number(con.funding_ceiling_sar) : 0,
+    funding_ceiling_sar: (() => {
+      const fromPack = con ? Number(con.funding_ceiling_sar) : 0
+      if (fromPack > 0) return fromPack
+      return submission.funding_ceiling_sar ? Number(submission.funding_ceiling_sar) : 0
+    })(),
     funding_gap_sar: con ? Number(con.funding_gap_sar) : 0,
     included_demand_count: con?.included_demand_count ?? submission.budget_lines.length,
     excluded_demand_count: con?.excluded_demand_count ?? 0,
@@ -165,6 +170,7 @@ export async function saveConsolidationPack(
           budget_submission_id: true,
           master_trace_id: true,
           total_requested_sar: true,
+          funding_ceiling_sar: true,
           entry_route: true,
           record_status: true,
           is_locked: true,
@@ -217,7 +223,7 @@ export async function saveConsolidationPack(
           master_trace_id: submission.master_trace_id,
           entity_type: 'BUDGET_CONSOLIDATION',
           entry_route: submission.entry_route,
-          funding_ceiling_sar: 0,
+          funding_ceiling_sar: Number(submission.funding_ceiling_sar ?? 0),
           funding_gap_sar: 0,
           requested_amount_sar: requested,
           demand_line_reconciliation: 'Pending',

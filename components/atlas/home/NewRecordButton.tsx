@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 type RouteChoice = 'STRATEGIC' | 'ADHOC'
 
 /** Cockpit CTA — shows a modal to choose STRATEGIC or ADHOC entry route (BR-004 / BR-005). */
-export function NewRecordButton() {
+export function NewRecordButton({ compact = false }: { compact?: boolean }) {
   const t = useTranslations('common')
   const router = useRouter()
   const { currentUser } = useAuth()
@@ -23,6 +23,7 @@ export function NewRecordButton() {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [selected, setSelected] = useState<RouteChoice>('STRATEGIC')
+  const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function NewRecordButton() {
 
   function handleContinue() {
     startTransition(async () => {
+      setError(null)
       const entryRoute =
         selected === 'STRATEGIC' ? EntryRoute.STRATEGIC : EntryRoute.ADHOC
 
@@ -72,6 +74,8 @@ export function NewRecordButton() {
           )
         }
         router.refresh()
+      } else {
+        setError(result.error)
       }
     })
   }
@@ -82,16 +86,22 @@ export function NewRecordButton() {
       <button
         type="button"
         data-tour="tour-new-record"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null)
+          setOpen(true)
+        }}
         disabled={pending}
-        className="btn btn-primary inline-flex h-11 items-center gap-2 px-4 text-sm disabled:opacity-60"
+        className={cn(
+          'btn btn-primary inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap disabled:opacity-60',
+          compact ? 'h-9 px-3 text-xs' : 'h-11 px-4 text-sm',
+        )}
       >
         {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
         )}
-        {pending ? t('creating') : `+ ${t('newRecord')}`}
+        {pending ? t('creating') : t('newRecord')}
       </button>
 
       {mounted &&
@@ -220,6 +230,12 @@ export function NewRecordButton() {
                 )}
               </button>
             </div>
+
+            {error ? (
+              <p className="border-t border-diriyah-red/20 bg-diriyah-red/10 px-6 py-3 text-sm text-diriyah-red">
+                {error}
+              </p>
+            ) : null}
 
             {/* Footer */}
             <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">

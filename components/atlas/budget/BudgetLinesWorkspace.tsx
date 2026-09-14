@@ -1,10 +1,10 @@
 'use client'
 
 import { Fragment, useMemo, useState, useTransition, type ChangeEvent } from 'react'
-import { Plus, Trash2, Loader2, CheckCircle2, AlertTriangle, Send, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Loader2, CheckCircle2, AlertTriangle, Send, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/src/providers/AuthProvider'
-import { useRouter } from '@/src/i18n/navigation'
+import { Link, useRouter } from '@/src/i18n/navigation'
 import { cn } from '@/lib/utils'
 import { saveBudgetLines, saveBudgetGovernance, submitBudget } from '@/src/actions/budget'
 
@@ -168,6 +168,14 @@ function formatSar(n: number) {
     style: 'currency',
     currency: 'SAR',
     maximumFractionDigits: 2,
+  }).format(n || 0)
+}
+
+function formatSarCompact(n: number) {
+  return new Intl.NumberFormat('en-SA', {
+    style: 'currency',
+    currency: 'SAR',
+    maximumFractionDigits: 0,
   }).format(n || 0)
 }
 
@@ -420,35 +428,63 @@ export function BudgetLinesWorkspace({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
-            PI-05 · Commercial &amp; Budgeting
-          </p>
-          <h1 className="text-xl font-semibold tracking-tight text-text">Budget Lines Grid</h1>
-          <p className="text-sm text-text-muted">
-            Header, accounting dimensions, and live CAPEX/OPEX/tax roll-ups (BR-025).
-            {strategyTitle ? (
-              <> Strategy: <span className="font-medium text-text">{strategyTitle}</span></>
-            ) : null}
-          </p>
+      <div className="space-y-4 border-b border-border pb-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-1">
+            <Link
+              href="/budget"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-diriyah-accent no-underline hover:underline"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" />
+              Back to Budget
+            </Link>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
+              PI-05 · Commercial &amp; Budgeting
+            </p>
+            <h1 className="text-xl font-semibold tracking-tight text-text">Budget Lines Grid</h1>
+            <p className="max-w-2xl text-sm text-text-muted">
+              Header, accounting dimensions, and live CAPEX/OPEX/tax roll-ups (BR-025).
+              {strategyTitle ? (
+                <>
+                  {' '}
+                  Strategy: <span className="font-medium text-text">{strategyTitle}</span>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <Link
+            href={`/budget/${encodeURIComponent(budgetSubmissionId)}/consolidation`}
+            className="btn h-9 shrink-0 self-start border-border bg-white px-3 text-xs no-underline"
+          >
+            Open Consolidation Pack
+          </Link>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Budget Submission</p>
-            <p className="mt-0.5 font-mono text-sm font-semibold text-diriyah-primary">{budgetSubmissionId}</p>
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="rounded-md border border-border bg-white px-3 py-2">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+              Budget Submission
+            </dt>
+            <dd className="mt-0.5 font-mono text-xs font-semibold text-diriyah-primary">
+              {budgetSubmissionId}
+            </dd>
           </div>
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Master Trace</p>
-            <p className="mt-0.5 font-mono text-sm font-semibold text-diriyah-primary">{masterTraceId}</p>
+          <div className="rounded-md border border-border bg-white px-3 py-2">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+              Master Trace
+            </dt>
+            <dd className="mt-0.5 font-mono text-xs font-semibold text-diriyah-primary">
+              {masterTraceId}
+            </dd>
           </div>
-          {recordStatus && (
-            <div className="rounded-md border border-border bg-white px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Status</p>
-              <p className="mt-0.5 text-sm font-semibold text-text">{recordStatus}</p>
+          {recordStatus ? (
+            <div className="rounded-md border border-border bg-white px-3 py-2">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                Status
+              </dt>
+              <dd className="mt-0.5 text-xs font-semibold text-text">{recordStatus}</dd>
             </div>
-          )}
-        </div>
+          ) : null}
+        </dl>
       </div>
 
       {notification && (
@@ -507,13 +543,18 @@ export function BudgetLinesWorkspace({
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard label="Total OPEX" value={formatSar(computed.totalOpex)} tone="opex" />
-        <MetricCard label="Total CAPEX" value={formatSar(computed.totalCapex)} tone="capex" />
-        <MetricCard label="Tax + Contingency" value={`${formatSar(computed.totalTax)} / ${formatSar(computed.totalContingency)}`} tone="opex" />
+      <div className="grid gap-3 md:grid-cols-4">
+        <MetricCard label="Total OPEX" value={formatSarCompact(computed.totalOpex)} tone="opex" />
+        <MetricCard label="Total CAPEX" value={formatSarCompact(computed.totalCapex)} tone="capex" />
+        <MetricCard
+          label="Tax + Contingency"
+          value={formatSarCompact(computed.totalTax)}
+          hint={`Contingency ${formatSarCompact(computed.totalContingency)}`}
+          tone="opex"
+        />
         <MetricCard
           label={computed.ceiling > 0 ? (computed.fundingGap > 0 ? 'Over Ceiling' : 'Within Ceiling') : 'Total Envelope'}
-          value={computed.ceiling > 0 ? formatSar(Math.abs(computed.fundingGap)) : formatSar(computed.totalEnvelope)}
+          value={computed.ceiling > 0 ? formatSarCompact(Math.abs(computed.fundingGap)) : formatSarCompact(computed.totalEnvelope)}
           tone={computed.ceiling > 0 && computed.fundingGap > 0 ? 'capex' : 'envelope'}
         />
       </div>
@@ -939,6 +980,12 @@ export function BudgetLinesWorkspace({
               &ldquo;Submit to CTO&rdquo; is visible to Commercial &amp; Budgeting role only (switch to Rami Noor).
             </p>
           )}
+          <Link
+            href={`/budget/${encodeURIComponent(budgetSubmissionId)}/consolidation`}
+            className="btn h-11 border-border bg-white px-6 text-sm no-underline"
+          >
+            Open Consolidation Pack
+          </Link>
           <button type="button" className="btn h-11 border-border bg-white px-6 text-sm disabled:opacity-50" disabled={busy} onClick={handleSave}>
             {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {savePending ? t('saving') : t('saveBudget')}
@@ -955,7 +1002,17 @@ export function BudgetLinesWorkspace({
   )
 }
 
-function MetricCard({ label, value, tone }: { label: string; value: string; tone: 'opex' | 'capex' | 'envelope' }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string
+  value: string
+  hint?: string
+  tone: 'opex' | 'capex' | 'envelope'
+}) {
   const accent =
     tone === 'opex'
       ? 'border-diriyah-primary/25 bg-white'
@@ -966,9 +1023,12 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
     tone === 'opex' ? 'text-diriyah-primary' : tone === 'capex' ? 'text-diriyah-green' : 'text-diriyah-accent'
 
   return (
-    <div className={cn('rounded-md border px-4 py-4', accent)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
-      <p className={cn('mt-2 text-xl font-semibold tracking-tight tabular-nums md:text-2xl', valueColor)}>{value}</p>
+    <div className={cn('rounded-md border px-4 py-3', accent)}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
+      <p className={cn('mt-1 text-sm font-semibold tabular-nums tracking-tight sm:text-base', valueColor)}>
+        {value}
+      </p>
+      {hint ? <p className="mt-0.5 text-[11px] tabular-nums text-text-muted">{hint}</p> : null}
     </div>
   )
 }

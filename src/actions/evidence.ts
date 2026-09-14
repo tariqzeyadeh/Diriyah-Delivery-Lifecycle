@@ -43,7 +43,7 @@ export async function addComment(
         parent_comment_id: parent_id ?? null,
         uploaded_by: author_id,
         created_by: author_id,
-        resolution_status: 'OPEN',
+        resolution_status: ResolutionStatus.NOT_APPLICABLE,
         comment_type: 'GENERAL',
       },
     })

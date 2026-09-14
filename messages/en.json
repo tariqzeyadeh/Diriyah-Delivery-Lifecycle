@@ -61,6 +61,8 @@
     "atlasLiveView": "Diriyah · Live View",
     "onePagerLiveDesc": "Portfolio motion, scorecard fractions, and strategy rollout matrix — Diriyah governance pack.",
     "tryAgain": "Try again",
+    "databaseUnreachable": "Database is unreachable",
+    "databaseUnreachableHint": "The MySQL instance could not be reached (host powered off, IP allowlist, or network). Start the service in the Aiven console, allow your IP, then refresh this page.",
     "returnToCockpit": "Return to cockpit",
     "systemException": "System Exception Logged",
     "unexpectedError": "An unexpected error occurred while processing this request. The incident has been captured for operations review.",

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
-import { useRouter } from '@/src/i18n/navigation'
+import { Link, useRouter } from '@/src/i18n/navigation'
 import {
   CheckCircle,
   AlertTriangle,
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   PackageCheck,
+  ArrowLeft,
 } from 'lucide-react'
 import {
   saveConsolidationPack,
@@ -440,14 +441,29 @@ export function ConsolidationPackWorkspace({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
-          PI-03 · {t('module')}
-        </p>
-        <h1 className="text-xl font-semibold tracking-tight text-text">
-          {t('pageTitle')}
-        </h1>
-        <p className="max-w-2xl text-sm text-text-muted">{t('desc')}</p>
+      <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <Link
+            href="/budget"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-diriyah-accent no-underline hover:underline"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" />
+            Back to Budget
+          </Link>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
+            PI-03 · {t('module')}
+          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-text">
+            {t('pageTitle')}
+          </h1>
+          <p className="max-w-2xl text-sm text-text-muted">{t('desc')}</p>
+        </div>
+        <Link
+          href={`/budget/${encodeURIComponent(budgetSubmissionId)}/lines`}
+          className="btn h-9 shrink-0 self-start border-border bg-white px-3 text-xs no-underline"
+        >
+          Back to Lines
+        </Link>
       </div>
 
       {isLocked && (
@@ -459,6 +475,7 @@ export function ConsolidationPackWorkspace({
 
       {pack.requested_amount_sar != null &&
         pack.funding_ceiling_sar != null &&
+        pack.funding_ceiling_sar > 0 &&
         pack.requested_amount_sar > pack.funding_ceiling_sar && (
           <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
             <AlertTriangle className="h-4 w-4 shrink-0" />

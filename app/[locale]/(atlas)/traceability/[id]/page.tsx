@@ -2,9 +2,10 @@ import { Link } from '@/src/i18n/navigation'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getTraceabilityTree, listMasterTraceIds } from '@/lib/atlas/dashboard-data'
+import { settleDatabase } from '@/lib/atlas/db-fallback'
 import { TraceabilityTreeView } from '@/components/atlas/dashboard/TraceabilityTreeView'
 import { ExportTraceabilityButton } from '@/components/atlas/export/ExportTraceabilityButton'
-import { PageIntro } from '@/components/atlas/records'
+import { PageIntro, RecordNotice } from '@/components/atlas/records'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -16,12 +17,34 @@ export default async function TraceabilityExplorerPage({ params }: Props) {
   const t = await getTranslations('pages')
   const tc = await getTranslations('common')
   const td = await getTranslations('traceDetail')
-  const tree = await getTraceabilityTree(masterTraceId)
+  const treeSettled = await settleDatabase(() => getTraceabilityTree(masterTraceId), null)
+  const tree = treeSettled.value
 
-  if (!tree) {
-    const recent = await listMasterTraceIds(5)
+  if (treeSettled.unreachable) {
     return (
       <div className="space-y-6">
+        <RecordNotice title={tc('databaseUnreachable')} tone="warning" role="alert">
+          {tc('databaseUnreachableHint')}
+        </RecordNotice>
+        <PageIntro
+          eyebrow={tc('traceabilityExplorer')}
+          title={t('notFoundTrace')}
+          description={masterTraceId}
+        />
+      </div>
+    )
+  }
+
+  if (!tree) {
+    const recentSettled = await settleDatabase(() => listMasterTraceIds(5), [])
+    const recent = recentSettled.value
+    return (
+      <div className="space-y-6">
+        {recentSettled.unreachable ? (
+          <RecordNotice title={tc('databaseUnreachable')} tone="warning" role="alert">
+            {tc('databaseUnreachableHint')}
+          </RecordNotice>
+        ) : null}
         <PageIntro
           eyebrow={tc('traceabilityExplorer')}
           title={t('notFoundTrace')}
