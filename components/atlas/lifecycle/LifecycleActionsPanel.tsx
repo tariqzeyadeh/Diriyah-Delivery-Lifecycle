@@ -12,25 +12,31 @@ import {
   rejectBudget,
   resubmitBudget,
 } from '@/src/actions/lifecycle'
+import { approveStrategyGate } from '@/src/actions/gates'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { cn } from '@/lib/utils'
 
 type EntityType = 'demand' | 'strategy' | 'budget'
 type RecordStatus = string | null | undefined
 
+const PENDING_GATE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'UNDER_VALIDATION']
+
 export function LifecycleActionsPanel({
   entityType,
   entityId,
   recordStatus,
   versionNumber,
+  masterTraceId,
 }: {
   entityType: EntityType
   entityId: string
   recordStatus: RecordStatus
   versionNumber?: number | null
+  masterTraceId?: string | null
 }) {
-  const { currentUser, isRole } = useAuth()
+  const { currentUser, isRole, canDecideGate } = useAuth()
   const t = useTranslations('lifecycle')
+  const tc = useTranslations('common')
   const router = useRouter()
   const [reason, setReason] = useState('')
   const [pending, startTransition] = useTransition()
@@ -41,10 +47,15 @@ export function LifecycleActionsPanel({
   const status = recordStatus ?? ''
   const canResubmit = ['RETURNED', 'DRAFT'].includes(status)
   const canReject =
-    ['SUBMITTED', 'UNDER_REVIEW', 'UNDER_VALIDATION', 'RETURNED'].includes(status) &&
+    [...PENDING_GATE_STATUSES, 'RETURNED'].includes(status) &&
     isRole('CTO Office', 'Strategy & Governance')
+  const canApprove =
+    entityType === 'strategy' &&
+    PENDING_GATE_STATUSES.includes(status) &&
+    canDecideGate('G-S1') &&
+    Boolean(masterTraceId)
 
-  if (!canResubmit && !canReject) return null
+  if (!canResubmit && !canReject && !canApprove) return null
 
   function doResubmit() {
     startTransition(async () => {
@@ -59,6 +70,24 @@ export function LifecycleActionsPanel({
           ok: true,
           message: `Re-submitted as version ${res.new_version ?? '—'}. Awaiting CTO review.`,
         })
+        router.refresh()
+      } else {
+        setResult({ ok: false, message: res.error })
+      }
+    })
+  }
+
+  function doApprove() {
+    if (!masterTraceId || entityType !== 'strategy') return
+    startTransition(async () => {
+      setResult(null)
+      const res = await approveStrategyGate({
+        strategy_id: entityId,
+        master_trace_id: masterTraceId,
+        created_by: currentUser.id,
+      })
+      if (res.ok) {
+        setResult({ ok: true, message: 'Strategy approved at G-S1. Demand and Budget drafts are now open.' })
         router.refresh()
       } else {
         setResult({ ok: false, message: res.error })
@@ -115,10 +144,23 @@ export function LifecycleActionsPanel({
             <button
               type="button"
               onClick={() => setShowReject((v) => !v)}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-700 hover:bg-red-100"
+              disabled={pending}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
             >
               <XCircle className="h-4 w-4" />
               Reject & Archive
+            </button>
+          )}
+          {canApprove && (
+            <button
+              type="button"
+              onClick={doApprove}
+              disabled={pending}
+              className="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--diriyah-green)' }}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {pending ? 'Working…' : tc('approve')}
             </button>
           )}
         </div>

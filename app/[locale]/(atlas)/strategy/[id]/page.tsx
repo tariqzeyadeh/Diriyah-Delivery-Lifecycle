@@ -26,6 +26,7 @@ export default async function StrategyWorkspacePage({ params }: StrategyWorkspac
         entityId={data.strategy_id}
         recordStatus={data.record_status}
         versionNumber={data.version_number}
+        masterTraceId={data.master_trace_id}
       />
       {/* G-05: Parallel-branch tracker — shows Demand + Budget cards once G-S1 fires */}
       {(data.record_status === 'APPROVED' || data.record_status === 'RETURNED') && (
