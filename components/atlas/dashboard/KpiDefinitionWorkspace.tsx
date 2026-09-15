@@ -10,6 +10,12 @@ import { ragTagTone, recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/
 import { cn } from '@/lib/utils'
 import { CheckCircle2, AlertTriangle, Loader2, Save, TrendingUp, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RAG badge
@@ -21,6 +27,7 @@ function RagBadge({ rag }: { rag: string | null | undefined }) {
 }
 
 type Tab = 'definition' | 'targets' | 'data-controls' | 'history'
+const KPI_TAB_IDS: Tab[] = ['definition', 'targets', 'data-controls', 'history']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KpiDefinitionWorkspace
@@ -34,9 +41,11 @@ export function KpiDefinitionWorkspace({
   history: KpiUpdateHistoryEntry[]
 }) {
   const t = useTranslations('kpiDetail')
+  const tc = useTranslations('common')
   const { currentUser } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('definition')
+  const steps = useFormSteps(KPI_TAB_IDS, 'definition')
+  const tab = steps.currentId as Tab
   const [pending, startTransition] = useTransition()
   const [saveResult, setSaveResult] = useState<{ ok: boolean; error?: string } | null>(null)
 
@@ -85,39 +94,55 @@ export function KpiDefinitionWorkspace({
     { key: 'evidence_required', label: 'Evidence required' },
   ]
 
+  async function persist(): Promise<boolean> {
+    setSaveResult(null)
+    const tp = targetRows.reduce<Record<string, number>>((acc, r) => {
+      if (r.period && r.target) acc[r.period] = parseFloat(r.target)
+      return acc
+    }, {})
+    const res = await saveKpiDefinition({
+      kpi_id: initialKpi.kpi_id,
+      kpi_name: kpiName,
+      kpi_definition: kpiDef || null,
+      measurement_purpose: purpose || null,
+      performance_polarity: polarity || null,
+      unit_of_measure: unit || null,
+      aggregation_method: aggregation || null,
+      collection_frequency: frequency || null,
+      calculation_formula: formula || null,
+      numerator_definition: numerator || null,
+      denominator_definition: denominator || null,
+      green_threshold: greenT || null,
+      amber_threshold: amberT || null,
+      red_threshold: redT || null,
+      baseline_value: baseline ? parseFloat(baseline) : null,
+      kpi_owner_user_id: owner || null,
+      data_steward_user_id: steward || null,
+      kpi_source_system: sourceSystem || null,
+      submission_due_offset_days: offset ? parseInt(offset, 10) : null,
+      target_profile: Object.keys(tp).length ? tp : null,
+      data_quality_rules: Object.keys(qualityRules).length ? qualityRules : null,
+      saved_by: currentUser.email,
+    })
+    setSaveResult(res)
+    if (res.ok) router.refresh()
+    return res.ok
+  }
+
   function handleSave() {
     startTransition(async () => {
-      setSaveResult(null)
-      const tp = targetRows.reduce<Record<string, number>>((acc, r) => {
-        if (r.period && r.target) acc[r.period] = parseFloat(r.target)
-        return acc
-      }, {})
-      const res = await saveKpiDefinition({
-        kpi_id: initialKpi.kpi_id,
-        kpi_name: kpiName,
-        kpi_definition: kpiDef || null,
-        measurement_purpose: purpose || null,
-        performance_polarity: polarity || null,
-        unit_of_measure: unit || null,
-        aggregation_method: aggregation || null,
-        collection_frequency: frequency || null,
-        calculation_formula: formula || null,
-        numerator_definition: numerator || null,
-        denominator_definition: denominator || null,
-        green_threshold: greenT || null,
-        amber_threshold: amberT || null,
-        red_threshold: redT || null,
-        baseline_value: baseline ? parseFloat(baseline) : null,
-        kpi_owner_user_id: owner || null,
-        data_steward_user_id: steward || null,
-        kpi_source_system: sourceSystem || null,
-        submission_due_offset_days: offset ? parseInt(offset, 10) : null,
-        target_profile: Object.keys(tp).length ? tp : null,
-        data_quality_rules: Object.keys(qualityRules).length ? qualityRules : null,
-        saved_by: currentUser.email,
-      })
-      setSaveResult(res)
-      if (res.ok) router.refresh()
+      await persist()
+    })
+  }
+
+  function handleNext() {
+    if (!kpiName.trim()) {
+      setSaveResult({ ok: false, error: tc('fillRequired') })
+      return
+    }
+    startTransition(async () => {
+      const ok = await persist()
+      if (ok) steps.advance()
     })
   }
 
@@ -155,15 +180,6 @@ export function KpiDefinitionWorkspace({
           </p>
           <h1 className="text-xl font-semibold tracking-tight text-text">{initialKpi.kpi_name}</h1>
         </div>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={handleSave}
-          className="btn btn-primary flex h-9 items-center gap-1.5 px-4 text-sm disabled:opacity-50"
-        >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {pending ? t('saving') : t('saveDefinition')}
-        </button>
       </div>
 
       {saveResult && (
@@ -178,28 +194,17 @@ export function KpiDefinitionWorkspace({
         {/* Left */}
         <div className="space-y-4">
           {/* Tabs */}
-          <div className="flex gap-4 border-b border-border">
-            {tabs.map((tabItem) => (
-              <button
-                key={tabItem.id}
-                type="button"
-                onClick={() => setTab(tabItem.id)}
-                className={cn(
-                  'flex-1 border-b-2 px-3 py-2 text-xs font-semibold transition-all',
-                  tab === tabItem.id
-                    ? 'border-diriyah-primary text-diriyah-primary'
-                    : 'border-transparent text-text-muted hover:text-text',
-                )}
-              >
-                {tabItem.label}
-              </button>
-            ))}
-          </div>
+          <FormStepRail
+            steps={tabs}
+            currentId={tab}
+            maxReached={steps.maxReached}
+            onSelect={(id) => steps.select(id)}
+          />
 
           {/* Tab: Definition */}
           {tab === 'definition' && (
             <div className="rounded-md border border-border bg-white p-4 space-y-5">
-              <FormField label={t('nameLabel')}>
+              <FormField label={t('nameLabel')} required>
                 <input className="input-base h-10 w-full text-sm" value={kpiName} onChange={(e) => setKpiName(e.target.value)} />
               </FormField>
 
@@ -434,9 +439,29 @@ export function KpiDefinitionWorkspace({
               )}
             </div>
           )}
-        </div>
 
-        {/* Right panel */}
+          <FormStepActions
+            isFirst={steps.isFirst}
+            isLast={steps.isLast}
+            onBack={steps.goBack}
+            onNext={handleNext}
+            nextDisabled={!kpiName.trim()}
+            nextPending={pending}
+            hideNext={steps.isLast}
+          >
+            {steps.isLast ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={handleSave}
+                className="btn btn-primary flex h-11 items-center gap-1.5 px-5 text-sm disabled:opacity-50"
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {pending ? t('saving') : t('saveDefinition')}
+              </button>
+            ) : null}
+          </FormStepActions>
+        </div>
         <div className="space-y-4">
           {/* Data Governance card */}
           <div className="rounded-md border border-border bg-white p-4 space-y-3">
@@ -471,10 +496,13 @@ export function KpiDefinitionWorkspace({
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+        {label}
+        {required ? <> <RequiredMark /></> : null}
+      </span>
       {children}
     </label>
   )

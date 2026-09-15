@@ -87,7 +87,7 @@ export function LifecycleActionsPanel({
         created_by: currentUser.id,
       })
       if (res.ok) {
-        setResult({ ok: true, message: 'Strategy approved at G-S1. Demand and Budget drafts are now open.' })
+        setResult({ ok: true, message: 'Strategy approved at G-S1. Create a Demand and link this strategy when you are ready.' })
         router.refresh()
       } else {
         setResult({ ok: false, message: res.error })

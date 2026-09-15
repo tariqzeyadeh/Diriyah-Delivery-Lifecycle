@@ -17,6 +17,12 @@ import { cn } from '@/lib/utils'
 import { useRouter } from '@/src/i18n/navigation'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { saveStrategy, submitStrategy } from '@/src/actions/strategy'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -564,6 +570,7 @@ function ObjectiveAccordion({
 
 export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: StrategyWorkspaceProps) {
   const t = useTranslations('strategy')
+  const tc = useTranslations('common')
   const formId = useId()
   const router = useRouter()
   const { currentUser } = useAuth()
@@ -572,7 +579,8 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
   const recordStatus = initialData?.record_status ?? 'DRAFT'
   const isSubmitted = ['SUBMITTED', 'APPROVED'].includes(recordStatus)
 
-  const [activeTab, setActiveTab] = useState<Tab>('general')
+  const steps = useFormSteps(TAB_IDS, 'general', isLocked)
+  const activeTab = steps.currentId as Tab
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [form, setForm] = useState<StrategyFormState>({
@@ -672,6 +680,34 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
   const canSave = hasTitleAndObjective && !isLocked
   const canSubmit = canSave && weightsValid
   const busy = savePending || submitPending
+
+  function stepValid(tab: Tab): boolean {
+    switch (tab) {
+      case 'general':
+        return (
+          form.strategy_title.trim().length > 0 &&
+          form.strategy_type.trim().length > 0 &&
+          form.horizon_start.trim().length > 0 &&
+          form.horizon_end.trim().length > 0 &&
+          form.executive_sponsor.trim().length > 0
+        )
+      case 'context':
+        return (
+          form.mandate_statement.trim().length > 0 &&
+          form.vision_statement.trim().length > 0 &&
+          form.mission_statement.trim().length > 0 &&
+          form.executive_summary.trim().length > 0
+        )
+      case 'scope':
+        return form.scope_in.trim().length > 0 && form.scope_out.trim().length > 0
+      case 'finance':
+        return form.funding_envelope.trim().length > 0 && Number(form.funding_envelope) > 0
+      case 'governance':
+        return true
+      case 'objectives':
+        return objectives.length > 0
+    }
+  }
 
   // G-09: Completeness check — percentage of core mandatory fields filled
   const completionPct = useMemo(() => {
@@ -815,17 +851,36 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
+  async function persist(): Promise<boolean> {
+    if (isLocked) return false
+    const result = await saveStrategy(buildPayload())
+    if (result.ok) {
+      setNotification({ type: 'success', message: '✓ Strategy saved successfully.' })
+      router.refresh()
+      return true
+    }
+    setNotification({ type: 'error', message: result.error })
+    return false
+  }
+
   function handleSave() {
     if (!canSave || busy) return
     setNotification(null)
     startSave(async () => {
-      const result = await saveStrategy(buildPayload())
-      if (result.ok) {
-        setNotification({ type: 'success', message: '✓ Strategy saved successfully.' })
-        router.refresh()
-      } else {
-        setNotification({ type: 'error', message: result.error })
-      }
+      await persist()
+    })
+  }
+
+  function handleNext() {
+    if (busy || isLocked) return
+    if (!stepValid(activeTab)) {
+      setNotification({ type: 'error', message: tc('fillRequired') })
+      return
+    }
+    setNotification(null)
+    startSave(async () => {
+      const ok = await persist()
+      if (ok) steps.advance()
     })
   }
 
@@ -961,32 +1016,27 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
         </div>
       )}
 
-      {/* ── Tab navigation ────────────────────────────────────────────────── */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {TAB_IDS.map((tabId) => {
-          const labelKey = tabId === 'general' ? 'generalTab' : tabId === 'context' ? 'contextTab' : tabId === 'scope' ? 'scopeTab' : tabId === 'finance' ? 'financeTab' : tabId === 'governance' ? 'governanceTab' : 'objectivesTab'
-          return (
-            <button
-              key={tabId}
-              type="button"
-              onClick={() => setActiveTab(tabId)}
-              className={cn(
-                'shrink-0 border-b-2 px-3 py-2 text-xs font-semibold transition',
-                activeTab === tabId
-                  ? 'border-diriyah-primary text-diriyah-primary'
-                  : 'border-transparent text-text-muted hover:text-text',
-              )}
-            >
-              {t(labelKey)}
-              {tabId === 'objectives' && (
-                <span className="ms-1.5 rounded-full bg-diriyah-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-diriyah-accent">
-                  {objectives.length}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      <FormStepRail
+        steps={TAB_IDS.map((tabId) => ({
+          id: tabId,
+          label: t(
+            tabId === 'general'
+              ? 'generalTab'
+              : tabId === 'context'
+                ? 'contextTab'
+                : tabId === 'scope'
+                  ? 'scopeTab'
+                  : tabId === 'finance'
+                    ? 'financeTab'
+                    : tabId === 'governance'
+                      ? 'governanceTab'
+                      : 'objectivesTab',
+          ),
+        }))}
+        currentId={activeTab}
+        maxReached={steps.maxReached}
+        onSelect={(id) => steps.select(id)}
+      />
 
       {/* ── TAB: General ─────────────────────────────────────────────────── */}
       {activeTab === 'general' && (
@@ -998,7 +1048,7 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">
               <span className="text-sm font-medium text-text">
-                {t('strategyTitle')} <span className="text-diriyah-red">*</span>
+                {t('strategyTitle')} <RequiredMark />
               </span>
               <input
                 id={`${formId}-title`}
@@ -1012,7 +1062,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">{t('strategyType')}</span>
+              <span className="text-sm font-medium text-text">
+                {t('strategyType')} <RequiredMark />
+              </span>
               <select className="input-base" value={form.strategy_type} onChange={patch('strategy_type')} disabled={isLocked}>
                 <option value="">Select…</option>
                 {STRATEGY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -1035,12 +1087,16 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">{t('horizonStart')}</span>
+              <span className="text-sm font-medium text-text">
+                {t('startDate')} <RequiredMark />
+              </span>
               <input type="date" className="input-base" value={form.horizon_start} onChange={patch('horizon_start')} disabled={isLocked} />
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">{t('horizonEnd')}</span>
+              <span className="text-sm font-medium text-text">
+                {t('endDate')} <RequiredMark />
+              </span>
               <input type="date" className="input-base" value={form.horizon_end} onChange={patch('horizon_end')} disabled={isLocked} />
             </label>
 
@@ -1057,7 +1113,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">{t('executiveSponsor')}</span>
+              <span className="text-sm font-medium text-text">
+                {t('executiveSponsor')} <RequiredMark />
+              </span>
               <input
                 className="input-base"
                 value={form.executive_sponsor}
@@ -1103,7 +1161,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
           </div>
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">
-              <span className="text-sm font-medium text-text">Mandate Statement</span>
+              <span className="text-sm font-medium text-text">
+                Mandate Statement <RequiredMark />
+              </span>
               <p className="text-xs text-text-muted">
                 Required before submit. This is the strategy mandate — no separate letter file.
               </p>
@@ -1117,7 +1177,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">Vision Statement</span>
+              <span className="text-sm font-medium text-text">
+                Vision Statement <RequiredMark />
+              </span>
               <textarea
                 className="input-base min-h-24 py-3"
                 value={form.vision_statement}
@@ -1128,7 +1190,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">Mission Statement</span>
+              <span className="text-sm font-medium text-text">
+                Mission Statement <RequiredMark />
+              </span>
               <textarea
                 className="input-base min-h-24 py-3"
                 value={form.mission_statement}
@@ -1139,7 +1203,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5 md:col-span-2">
-              <span className="text-sm font-medium text-text">Executive Summary</span>
+              <span className="text-sm font-medium text-text">
+                Executive Summary <RequiredMark />
+              </span>
               <textarea
                 className="input-base min-h-28 py-3"
                 value={form.executive_summary}
@@ -1219,7 +1285,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
           </div>
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">Scope In</span>
+              <span className="text-sm font-medium text-text">
+                Scope In <RequiredMark />
+              </span>
               <textarea
                 className="input-base min-h-28 py-3 text-sm"
                 value={form.scope_in}
@@ -1230,7 +1298,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">Scope Out</span>
+              <span className="text-sm font-medium text-text">
+                Scope Out <RequiredMark />
+              </span>
               <textarea
                 className="input-base min-h-28 py-3 text-sm"
                 value={form.scope_out}
@@ -1288,7 +1358,9 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
           </div>
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">Funding Envelope</span>
+              <span className="text-sm font-medium text-text">
+                Funding Envelope <RequiredMark />
+              </span>
               <div className="relative">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
                   {form.currency_code || 'SAR'}
@@ -1494,35 +1566,46 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
         </div>
       )}
 
-      {/* ── Action footer ─────────────────────────────────────────────────── */}
       {!isLocked && (
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end border-t border-border pt-5">
-          <button
-            type="button"
-            className="btn h-11 border-border bg-white px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canSave || busy}
-            onClick={handleSave}
-          >
-            {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {savePending ? t('saving') : t('saveStrategy')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary inline-flex h-11 items-center gap-2 px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canSubmit || busy}
-            onClick={handleSubmitToCto}
-            title={
-              !weightsValid
-                ? 'BR-007: Objective weights must sum to 100%.'
-                : !hasTitleAndObjective
-                  ? 'BR-006: Title and at least one objective are required.'
-                  : 'Submit strategy to CTO for Gate G-S1 review.'
-            }
-          >
-            {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {submitPending ? t('submitting') : t('submitStrategy')}
-          </button>
-        </div>
+        <FormStepActions
+          isFirst={steps.isFirst}
+          isLast={steps.isLast}
+          onBack={steps.goBack}
+          onNext={handleNext}
+          nextDisabled={!stepValid(activeTab)}
+          nextPending={savePending}
+          hideNext={steps.isLast}
+        >
+          {steps.isLast ? (
+            <>
+              <button
+                type="button"
+                className="btn h-11 border-border bg-white px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canSave || busy}
+                onClick={handleSave}
+              >
+                {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {savePending ? t('saving') : t('saveStrategy')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary inline-flex h-11 items-center gap-2 px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canSubmit || busy}
+                onClick={handleSubmitToCto}
+                title={
+                  !weightsValid
+                    ? 'BR-007: Objective weights must sum to 100%.'
+                    : !hasTitleAndObjective
+                      ? 'BR-006: Title and at least one objective are required.'
+                      : 'Submit strategy to CTO for Gate G-S1 review.'
+                }
+              >
+                {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {submitPending ? t('submitting') : t('submitStrategy')}
+              </button>
+            </>
+          ) : null}
+        </FormStepActions>
       )}
     </div>
   )

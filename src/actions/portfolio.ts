@@ -92,6 +92,10 @@ export type DemandListItem = {
   option_count: number
 }
 
+export async function listDemandsForBudgetPicker(): Promise<DemandListItem[]> {
+  return listDemands(500)
+}
+
 export async function listDemands(limit = 40): Promise<DemandListItem[]> {
   const buScope = await buScopeWhere()
   const rows = await prisma.demand.findMany({

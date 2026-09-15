@@ -10,7 +10,7 @@ const TOUR_STEPS: Step[] = [
     target: '[data-tour="tour-new-record"]',
     title: 'Start a governed spine',
     content:
-      'Click + New Record to open a Master Trace and Strategy draft. Every downstream Demand, Budget, and Project inherits that ID.',
+      'Click + New Record to choose Strategy or Demand. Strategy finishes at G-S1. Demand can link an approved strategy later; budget is created when that demand is submitted.',
     placement: 'bottom',
     skipBeacon: true,
   },

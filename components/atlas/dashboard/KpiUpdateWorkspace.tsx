@@ -13,6 +13,12 @@ import {
   RotateCcw, Clock, TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -130,6 +136,7 @@ function RagRing({ rag }: { rag: string | null | undefined }) {
 }
 
 type Tab = 'update' | 'evidence' | 'corrective-actions' | 'history'
+const KPI_UPDATE_TABS: Tab[] = ['update', 'evidence', 'corrective-actions', 'history']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KpiUpdateWorkspace
@@ -145,9 +152,11 @@ export function KpiUpdateWorkspace({
   activePeriod: string
 }) {
   const t = useTranslations('kpiUpdate')
+  const tc = useTranslations('common')
   const { currentUser } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('update')
+  const steps = useFormSteps(KPI_UPDATE_TABS, 'update')
+  const tab = steps.currentId as Tab
 
   // Find existing update for this period
   const existing = history.find((u) => u.period === activePeriod)
@@ -169,21 +178,42 @@ export function KpiUpdateWorkspace({
     ? (parseFloat(actual) - currentTarget).toFixed(2)
     : null
 
+  async function persist(isDraft = false): Promise<boolean> {
+    if (!actual.trim() || !period.trim()) return false
+    setSaveResult(null)
+    const res = await saveKpiUpdate({
+      kpi_id: kpi.kpi_id,
+      reporting_period: period,
+      actual_value: parseFloat(actual),
+      performance_commentary: commentary || undefined,
+      submitted_by: currentUser.email,
+    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSaveResult({ ok: res.ok, rag: (res as any).rag_status, error: (res as any).error })
+    if (res.ok && !isDraft) router.refresh()
+    return res.ok
+  }
+
   function handleSave(isDraft = false) {
     if (!actual.trim() || !period.trim()) return
     startTransition(async () => {
-      setSaveResult(null)
-      const res = await saveKpiUpdate({
-        kpi_id: kpi.kpi_id,
-        reporting_period: period,
-        actual_value: parseFloat(actual),
-        performance_commentary: commentary || undefined,
-        submitted_by: currentUser.email,
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setSaveResult({ ok: res.ok, rag: (res as any).rag_status, error: (res as any).error })
-      if (res.ok && !isDraft) router.refresh()
+      await persist(isDraft)
     })
+  }
+
+  function handleNext() {
+    if (tab === 'update') {
+      if (!actual.trim() || !period.trim()) {
+        setSaveResult({ ok: false, error: tc('fillRequired') })
+        return
+      }
+      startTransition(async () => {
+        const ok = await persist(true)
+        if (ok) steps.advance()
+      })
+      return
+    }
+    steps.advance()
   }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -241,23 +271,12 @@ export function KpiUpdateWorkspace({
         {/* Left */}
         <div className="space-y-4">
           {/* Tabs */}
-          <div className="flex gap-4 border-b border-border">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'flex-1 border-b-2 px-3 py-2 text-xs font-semibold transition-all',
-                  tab === t.id
-                    ? 'border-diriyah-primary text-diriyah-primary'
-                    : 'border-transparent text-text-muted hover:text-text',
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <FormStepRail
+            steps={tabs}
+            currentId={tab}
+            maxReached={steps.maxReached}
+            onSelect={(id) => steps.select(id)}
+          />
 
           {/* Tab: Performance Update */}
           {tab === 'update' && (
@@ -272,11 +291,15 @@ export function KpiUpdateWorkspace({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t('period')}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    {t('period')} <RequiredMark />
+                  </span>
                   <input type="month" className="input-base h-10 w-full font-mono text-sm" value={period} onChange={(e) => setPeriod(e.target.value)} />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t('actualValue')}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    {t('actualValue')} <RequiredMark />
+                  </span>
                   <div className="flex items-center gap-2">
                     <input type="number" step="0.01" className="input-base h-10 w-full tabular-nums text-sm" value={actual} onChange={(e) => setActual(e.target.value)} placeholder="Enter value" />
                     {kpi.unit_of_measure && <span className="whitespace-nowrap text-sm text-text-muted">{kpi.unit_of_measure}</span>}
@@ -331,19 +354,6 @@ export function KpiUpdateWorkspace({
                     <option value="Off Track">Off Track</option>
                   </select>
                 </label>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
-                <button type="button" disabled={!actual.trim() || pendingSave} onClick={() => handleSave(true)}
-                  className="btn btn-secondary h-10 px-4 text-sm disabled:opacity-50 flex items-center gap-1.5">
-                  {pendingSave ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                  Save draft
-                </button>
-                <button type="button" disabled={!actual.trim() || pendingSave} onClick={() => handleSave(false)}
-                  className="btn btn-primary h-10 px-4 text-sm disabled:opacity-50 flex items-center gap-1.5">
-                  {pendingSave ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  {pendingSave ? t('saving') : t('saveUpdate')}
-                </button>
               </div>
             </div>
           )}
@@ -438,9 +448,40 @@ export function KpiUpdateWorkspace({
               </div>
             </div>
           )}
-        </div>
 
-        {/* Right panel */}
+          <FormStepActions
+            isFirst={steps.isFirst}
+            isLast={steps.isLast}
+            onBack={steps.goBack}
+            onNext={handleNext}
+            nextDisabled={tab === 'update' && (!actual.trim() || !period.trim())}
+            nextPending={pendingSave}
+            hideNext={steps.isLast}
+          >
+            {steps.isLast ? (
+              <>
+                <button
+                  type="button"
+                  disabled={!actual.trim() || pendingSave}
+                  onClick={() => handleSave(true)}
+                  className="btn btn-secondary h-11 px-4 text-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {pendingSave ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  Save draft
+                </button>
+                <button
+                  type="button"
+                  disabled={!actual.trim() || pendingSave}
+                  onClick={() => handleSave(false)}
+                  className="btn btn-primary h-11 px-4 text-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {pendingSave ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {pendingSave ? t('saving') : t('saveUpdate')}
+                </button>
+              </>
+            ) : null}
+          </FormStepActions>
+        </div>
         <div className="space-y-4">
           {/* RAG ring */}
           <div className="rounded-md border border-border bg-white p-4 flex justify-center">

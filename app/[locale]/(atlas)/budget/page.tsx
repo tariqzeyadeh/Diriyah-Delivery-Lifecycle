@@ -1,7 +1,7 @@
+import { Plus } from 'lucide-react'
 import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
 import { listBudgetSubmissions } from '@/src/actions/portfolio'
-import { NewRecordButton } from '@/components/atlas/home/NewRecordButton'
 import { OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
 import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
@@ -26,7 +26,15 @@ export default async function BudgetIndexPage() {
         eyebrow={`PI-05 · ${tc('module')}`}
         title={t('pageTitle')}
         description={t('pageDesc')}
-        actions={<NewRecordButton compact />}
+        actions={
+          <Link
+            href="/budget/new"
+            className="btn btn-primary inline-flex h-9 items-center gap-1.5 px-3 text-xs no-underline"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('createBudget')}
+          </Link>
+        }
       />
 
       {budgets.length === 0 ? (

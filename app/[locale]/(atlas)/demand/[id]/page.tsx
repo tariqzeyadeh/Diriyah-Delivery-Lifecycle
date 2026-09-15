@@ -5,7 +5,7 @@ import { LifecycleActionsPanel } from '@/components/atlas/lifecycle/LifecycleAct
 
 type DemandWorkspacePageProps = {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ route?: string }>
+  searchParams: Promise<{ route?: string; strategy?: string }>
 }
 
 function fmtDate(d?: Date | null): string {
@@ -25,7 +25,7 @@ export default async function DemandWorkspacePage({
   searchParams,
 }: DemandWorkspacePageProps) {
   const { id } = await params
-  const { route } = await searchParams
+  const { route, strategy: strategyFromQuery } = await searchParams
   const demandId = decodeURIComponent(id)
 
   if (!demandId) notFound()
@@ -39,6 +39,10 @@ export default async function DemandWorkspacePage({
       ? (demand.objective_ids as string[])
       : []
     const kpiIds = Array.isArray(demand.kpi_ids) ? (demand.kpi_ids as string[]) : []
+    const queriedStrategy =
+      strategyFromQuery && strategies.some((s) => s.strategy_id === strategyFromQuery)
+        ? strategyFromQuery
+        : ''
 
     return (
       <div className="space-y-6">
@@ -83,7 +87,7 @@ export default async function DemandWorkspacePage({
           high_level_deliverables: jsonToLines(demand.high_level_deliverables),
           // Alignment
           ad_hoc_justification: demand.ad_hoc_justification ?? '',
-          strategy_id: demand.strategy_id ?? '',
+          strategy_id: demand.strategy_id || queriedStrategy,
           objective_ids: objectiveIds,
           kpi_ids: kpiIds,
           strategic_contribution_statement: demand.strategic_contribution_statement ?? '',

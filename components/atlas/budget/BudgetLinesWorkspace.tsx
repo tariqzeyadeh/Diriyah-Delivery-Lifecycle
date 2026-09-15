@@ -7,6 +7,12 @@ import { useAuth } from '@/src/providers/AuthProvider'
 import { Link, useRouter } from '@/src/i18n/navigation'
 import { cn } from '@/lib/utils'
 import { saveBudgetLines, saveBudgetGovernance, submitBudget } from '@/src/actions/budget'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 export type LineType = 'OPEX' | 'CAPEX'
 export type LineCategory = 'License' | 'Services' | 'Hardware' | 'Software' | 'Other'
@@ -190,6 +196,7 @@ const BUDGET_RECS = ['Recommend Full', 'Recommend Partial', 'Defer', 'Reject', '
 const RISK_RATINGS = ['High', 'Medium', 'Low']
 
 type BudgetTab = 'lines' | 'funding_profile' | 'governance'
+const BUDGET_TABS: BudgetTab[] = ['lines', 'funding_profile', 'governance']
 
 export function BudgetLinesWorkspace({
   budgetSubmissionId,
@@ -201,10 +208,12 @@ export function BudgetLinesWorkspace({
   initialLines,
 }: BudgetLinesWorkspaceProps) {
   const t = useTranslations('budget')
+  const tc = useTranslations('common')
   const { canSubmitBudgetToCto, canEditBudgetGovernance, currentUser } = useAuth()
   const router = useRouter()
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<BudgetTab>('lines')
+  const steps = useFormSteps(BUDGET_TABS, 'lines', isLocked)
+  const activeTab = steps.currentId as BudgetTab
   const [governance, setGovernance] = useState<BudgetGovernanceState>({
     budget_assumptions: [],
     budget_risks: [],
@@ -339,25 +348,44 @@ export function BudgetLinesWorkspace({
     }
   }
 
-  function handleSave() {
-    if (busy || isLocked) return
+  async function persistLines(): Promise<boolean> {
+    if (isLocked) return false
     if (!lines.length) {
       setNotification({ type: 'error', message: 'Add at least one budget line before saving.' })
+      return false
+    }
+    const result = await saveBudgetLines(buildPayload())
+    if (result.ok) {
+      applySavedIds(result.line_ids)
+      setNotification({
+        type: 'success',
+        message: `${result.line_count} budget line(s) saved. Total envelope: ${formatSar(computed.totalEnvelope)}`,
+      })
+      router.refresh()
+      return true
+    }
+    setNotification({ type: 'error', message: result.error })
+    return false
+  }
+
+  function handleSave() {
+    if (busy || isLocked) return
+    setNotification(null)
+    startSave(async () => {
+      await persistLines()
+    })
+  }
+
+  function handleNext() {
+    if (busy || isLocked) return
+    if (activeTab === 'lines' && !lines.length) {
+      setNotification({ type: 'error', message: tc('fillRequired') })
       return
     }
     setNotification(null)
     startSave(async () => {
-      const result = await saveBudgetLines(buildPayload())
-      if (result.ok) {
-        applySavedIds(result.line_ids)
-        setNotification({
-          type: 'success',
-          message: `${result.line_count} budget line(s) saved. Total envelope: ${formatSar(computed.totalEnvelope)}`,
-        })
-        router.refresh()
-      } else {
-        setNotification({ type: 'error', message: result.error })
-      }
+      const ok = await persistLines()
+      if (ok) steps.advance()
     })
   }
 
@@ -559,30 +587,23 @@ export function BudgetLinesWorkspace({
         />
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {(['lines', 'funding_profile', 'governance'] as BudgetTab[]).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              'flex-1 border-b-2 px-3 py-2 text-xs font-semibold transition-colors',
-              activeTab === tab
-                ? 'border-diriyah-primary text-diriyah-primary'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {tab === 'lines' ? t('linesTab') : tab === 'funding_profile' ? t('fundingTab') : t('governanceTab')}
-          </button>
-        ))}
-      </div>
+      <FormStepRail
+        steps={BUDGET_TABS.map((tab) => ({
+          id: tab,
+          label: tab === 'lines' ? t('linesTab') : tab === 'funding_profile' ? t('fundingTab') : t('governanceTab'),
+        }))}
+        currentId={activeTab}
+        maxReached={steps.maxReached}
+        onSelect={(id) => steps.select(id)}
+      />
 
       {activeTab === 'lines' && (
       <section className="overflow-hidden rounded-md border border-border bg-white">
         <div className="flex items-center justify-between border-b border-border bg-diriyah-bg-alt/80 px-4 py-3">
           <div>
-            <h2 className="text-base font-semibold text-text">Cost Lines</h2>
+            <h2 className="text-base font-semibold text-text">
+              Cost Lines <RequiredMark />
+            </h2>
             <p className="text-xs text-text-muted">
               total = (qty × unit − discount + contingency) + tax
             </p>
@@ -974,29 +995,41 @@ export function BudgetLinesWorkspace({
       )}
 
       {!isLocked && (
-        <div className="flex flex-col-reverse items-end gap-3 sm:flex-row sm:items-center sm:justify-end">
-          {!canSubmitBudgetToCto && (
-            <p className="text-xs text-text-muted">
-              &ldquo;Submit to CTO&rdquo; is visible to Commercial &amp; Budgeting role only (switch to Rami Noor).
-            </p>
-          )}
-          <Link
-            href={`/budget/${encodeURIComponent(budgetSubmissionId)}/consolidation`}
-            className="btn h-11 border-border bg-white px-6 text-sm no-underline"
-          >
-            Open Consolidation Pack
-          </Link>
-          <button type="button" className="btn h-11 border-border bg-white px-6 text-sm disabled:opacity-50" disabled={busy} onClick={handleSave}>
-            {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {savePending ? t('saving') : t('saveBudget')}
-          </button>
-          {canSubmitBudgetToCto && (
-            <button type="button" className="btn btn-primary inline-flex h-11 items-center gap-2 px-6 text-sm disabled:opacity-50" data-testid="budget-submit-cto" disabled={busy} onClick={handleSubmitToCto}>
-              {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {submitPending ? t('submitting') : t('submitBudget')}
-            </button>
-          )}
-        </div>
+        <FormStepActions
+          isFirst={steps.isFirst}
+          isLast={steps.isLast}
+          onBack={steps.goBack}
+          onNext={handleNext}
+          nextDisabled={activeTab === 'lines' && !lines.length}
+          nextPending={savePending}
+          hideNext={steps.isLast}
+        >
+          {steps.isLast ? (
+            <>
+              {!canSubmitBudgetToCto && (
+                <p className="text-xs text-text-muted sm:me-auto">
+                  &ldquo;Submit to CTO&rdquo; is visible to Commercial &amp; Budgeting role only (switch to Rami Noor).
+                </p>
+              )}
+              <Link
+                href={`/budget/${encodeURIComponent(budgetSubmissionId)}/consolidation`}
+                className="btn h-11 border-border bg-white px-6 text-sm no-underline"
+              >
+                Open Consolidation Pack
+              </Link>
+              <button type="button" className="btn h-11 border-border bg-white px-6 text-sm disabled:opacity-50" disabled={busy} onClick={handleSave}>
+                {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {savePending ? t('saving') : t('saveBudget')}
+              </button>
+              {canSubmitBudgetToCto && (
+                <button type="button" className="btn btn-primary inline-flex h-11 items-center gap-2 px-6 text-sm disabled:opacity-50" data-testid="budget-submit-cto" disabled={busy} onClick={handleSubmitToCto}>
+                  {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {submitPending ? t('submitting') : t('submitBudget')}
+                </button>
+              )}
+            </>
+          ) : null}
+        </FormStepActions>
       )}
     </div>
   )

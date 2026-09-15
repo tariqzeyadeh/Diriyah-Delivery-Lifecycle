@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { StrategyWorkspace } from '@/components/atlas/strategy/StrategyWorkspace'
 import { getStrategyWorkspace } from '@/src/actions/strategy'
 import { LifecycleActionsPanel } from '@/components/atlas/lifecycle/LifecycleActionsPanel'
+import { NewRecordButton } from '@/components/atlas/home/NewRecordButton'
 import { OfficialTag, SummaryCard } from '@/components/atlas/records'
 import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 
@@ -28,73 +29,55 @@ export default async function StrategyWorkspacePage({ params }: StrategyWorkspac
         versionNumber={data.version_number}
         masterTraceId={data.master_trace_id}
       />
-      {/* G-05: Parallel-branch tracker — shows Demand + Budget cards once G-S1 fires */}
-      {(data.record_status === 'APPROVED' || data.record_status === 'RETURNED') && (
-        data.demands.length > 0 || data.budget_submissions.length > 0
-      ) && (
+      {data.record_status === 'APPROVED' || data.record_status === 'APPROVED_COND' ? (
         <div className="rounded-md border border-border bg-white p-4">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-diriyah-accent">
-            G-S1 approved — parallel tracks active
+            G-S1 complete
           </p>
           <p className="mb-3 text-xs text-text-muted">
-            Demand Case and Budget Envelope were released simultaneously after CTO approval.
+            This strategy is approved. Create a demand and select this strategy on the Identity tab.
+            A budget draft is created when that demand is submitted.
           </p>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {data.demands.map((d) => (
-              <li key={d.demand_id}>
-                <SummaryCard
-                  eyebrow={d.demand_id}
-                  title={d.demand_title}
-                  tag={
-                    <OfficialTag tone={recordStatusTagTone(d.record_status)}>
-                      {sentenceCaseLabel(d.record_status)}
-                    </OfficialTag>
-                  }
-                  items={[
-                    {
-                      label: 'Track A · Demand',
-                      value:
-                        d.completeness_score_pct != null
-                          ? `${Number(d.completeness_score_pct)}% complete`
-                          : '—',
-                    },
-                  ]}
-                  action={{
-                    href: `/demand/${encodeURIComponent(d.demand_id)}`,
-                    label: 'Open demand',
-                  }}
-                />
-              </li>
-            ))}
-            {data.budget_submissions.map((b) => (
-              <li key={b.budget_submission_id}>
-                <SummaryCard
-                  eyebrow={b.budget_submission_id}
-                  title={b.budget_cycle ?? 'Annual plan'}
-                  tag={
-                    <OfficialTag tone={recordStatusTagTone(b.record_status)}>
-                      {sentenceCaseLabel(b.record_status)}
-                    </OfficialTag>
-                  }
-                  items={[
-                    {
-                      label: 'Track B · Budget',
-                      value:
-                        b.total_requested_sar != null
-                          ? `SAR ${Number(b.total_requested_sar).toLocaleString('en-SA')}`
-                          : '—',
-                    },
-                  ]}
-                  action={{
-                    href: `/budget/${encodeURIComponent(b.budget_submission_id)}/lines`,
-                    label: 'Open lines',
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="mb-4">
+            <NewRecordButton
+              compact
+              intent="demand"
+              preselectStrategyId={data.strategy_id}
+              label="Create demand"
+            />
+          </div>
+          {data.demands.length > 0 ? (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {data.demands.map((d) => (
+                <li key={d.demand_id}>
+                  <SummaryCard
+                    eyebrow={d.demand_id}
+                    title={d.demand_title}
+                    tag={
+                      <OfficialTag tone={recordStatusTagTone(d.record_status)}>
+                        {sentenceCaseLabel(d.record_status)}
+                      </OfficialTag>
+                    }
+                    items={[
+                      {
+                        label: 'Demand',
+                        value:
+                          d.completeness_score_pct != null
+                            ? `${Number(d.completeness_score_pct)}% complete`
+                            : '—',
+                      },
+                    ]}
+                    action={{
+                      href: `/demand/${encodeURIComponent(d.demand_id)}`,
+                      label: 'Open demand',
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       <StrategyWorkspace
         strategyId={data.strategy_id}

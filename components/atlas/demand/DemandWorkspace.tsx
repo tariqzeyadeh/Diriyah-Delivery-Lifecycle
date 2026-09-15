@@ -15,6 +15,12 @@ import { useAuth } from '@/src/providers/AuthProvider'
 import { useRouter } from '@/src/i18n/navigation'
 import { cn } from '@/lib/utils'
 import { saveDemand, submitDemand } from '@/src/actions/demand'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -191,6 +197,7 @@ type DemandWorkspaceProps = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DEMAND_TAB_IDS: Tab[] = ['identity', 'case', 'alignment', 'options', 'technical', 'finance', 'registers']
+const OWNER_ONLY_TABS: Tab[] = ['options', 'technical', 'finance', 'registers']
 const DEMAND_TAB_LABELS: Record<Tab, string> = {
   identity: 'Identity',
   case: 'Business Case',
@@ -221,32 +228,6 @@ const REQ_PRIORITY = ['Must Have', 'Should Have', 'Could Have', "Won't Have"] as
 const MILESTONE_TYPES = ['Planning', 'Design', 'Procurement', 'Implementation', 'Acceptance', 'Go-Live']
 const INFLUENCE_OPTIONS = ['High', 'Medium', 'Low']
 const ENGAGEMENT_OPTIONS = ['Champion', 'Supporter', 'Neutral', 'Resistant']
-
-// ─── Step Wizard ─────────────────────────────────────────────────────────────
-const WIZARD_STEPS = [
-  { label: 'Request' },
-  { label: 'Business case' },
-  { label: 'Technology review' },
-  { label: 'Budget validation' },
-  { label: 'Submit' },
-]
-
-function deriveWizardStep(
-  recordStatus: string | null | undefined,
-  form: DemandFormState,
-): number {
-  const s = (recordStatus ?? '').toUpperCase()
-  if (s === 'SUBMITTED') return 5
-  if (s === 'VALIDATED' || s === 'VALIDATED_COND' || s === 'CONDITIONAL') return 4
-  if (s === 'UNDER_VALIDATION') return 4
-  if (s === 'UNDER_REVIEW') return 3
-  // DRAFT — advance to step 2 if core fields are filled
-  const coreFieldsFilled =
-    form.demand_title.trim().length > 0 &&
-    form.problem_opportunity_statement.trim().length > 0 &&
-    form.business_impact.trim().length > 0
-  return coreFieldsFilled ? 2 : 1
-}
 
 function calcCompleteness(form: DemandFormState): number {
   const checks: boolean[] = [
@@ -369,7 +350,7 @@ function persistedId(localId: string): string | undefined {
 export function DemandWorkspace({
   demandId,
   masterTraceId,
-  entryRoute,
+  entryRoute: _entryRoute,
   initialForm,
   strategies,
   initialOptions,
@@ -383,12 +364,18 @@ export function DemandWorkspace({
   isLocked,
 }: DemandWorkspaceProps) {
   const t = useTranslations('demand')
-  const { canEditDemand, currentUser } = useAuth()
+  const tc = useTranslations('common')
+  const { canEditDemand, currentUser, isRole } = useAuth()
   const router = useRouter()
   const readOnly = !canEditDemand || isLocked === true
-  const isAdHoc = entryRoute === 'ADHOC'
+  const isBusinessOwner = isRole('Business Owner')
 
-  const [activeTab, setActiveTab] = useState<Tab>('identity')
+  const visibleTabs = useMemo(
+    () => DEMAND_TAB_IDS.filter((tabId) => isBusinessOwner || !OWNER_ONLY_TABS.includes(tabId)),
+    [isBusinessOwner],
+  )
+  const steps = useFormSteps(visibleTabs, 'identity', readOnly)
+  const activeTab = steps.currentId as Tab
   const [form, setForm] = useState<DemandFormState>(initialForm)
   const [options, setOptions] = useState<DemandOptionRow[]>(
     initialOptions?.length ? initialOptions : [newOption(), newOption()],
@@ -419,15 +406,35 @@ export function DemandWorkspace({
     return availableObjectives.filter((o) => selected.has(o.objective_id)).flatMap((o) => o.kpis)
   }, [availableObjectives, form.objective_ids])
 
-  const br005Valid = isAdHoc
-    ? form.ad_hoc_justification.trim().length >= 20
-    : Boolean(form.strategy_id) && form.objective_ids.length > 0
+  const hasStrategy = Boolean(form.strategy_id)
+  const isStandalone = !hasStrategy
+  const routeLabel = isStandalone ? 'ADHOC' : 'STRATEGIC'
   const br016Valid =
     form.demand_title.trim().length > 0 && form.problem_opportunity_statement.trim().length > 0
   const hasDoNothing = options.some((o) => o.is_do_nothing)
   const br017Valid = options.length === 0 || hasDoNothing
-  const canSave = !readOnly && form.demand_title.trim().length > 0 && br005Valid
+  const canSave = !readOnly && form.demand_title.trim().length > 0
   const canSubmit = canSave && br016Valid && br017Valid && attestationChecked
+
+  function stepValid(tab: Tab): boolean {
+    switch (tab) {
+      case 'identity':
+        return (
+          form.demand_title.trim().length > 0 &&
+          (hasStrategy || form.ad_hoc_justification.trim().length >= 20)
+        )
+      case 'case':
+        return form.problem_opportunity_statement.trim().length > 0
+      case 'alignment':
+        return true
+      case 'options':
+        return br017Valid
+      case 'technical':
+      case 'finance':
+      case 'registers':
+        return true
+    }
+  }
 
   function patch(field: keyof DemandFormState) {
     return (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -493,10 +500,10 @@ export function DemandWorkspace({
       scope_in: form.scope_in || undefined,
       scope_out: form.scope_out || undefined,
       high_level_deliverables: linesToArray(form.high_level_deliverables),
-      ad_hoc_justification: isAdHoc ? form.ad_hoc_justification : undefined,
-      strategy_id: !isAdHoc && form.strategy_id ? form.strategy_id : undefined,
-      objective_ids: !isAdHoc && form.objective_ids.length ? form.objective_ids : undefined,
-      kpi_ids: !isAdHoc && form.kpi_ids.length ? form.kpi_ids : undefined,
+      ad_hoc_justification: isStandalone ? form.ad_hoc_justification : undefined,
+      strategy_id: form.strategy_id || undefined,
+      objective_ids: hasStrategy && form.objective_ids.length ? form.objective_ids : undefined,
+      kpi_ids: hasStrategy && form.kpi_ids.length ? form.kpi_ids : undefined,
       strategic_contribution_statement: form.strategic_contribution_statement || undefined,
       architecture_impact: form.architecture_impact,
       architecture_assessment_summary: form.architecture_assessment_summary || undefined,
@@ -594,17 +601,36 @@ export function DemandWorkspace({
     }
   }
 
+  async function persist(): Promise<boolean> {
+    if (readOnly) return false
+    const result = await saveDemand(buildSavePayload())
+    if (result.ok) {
+      setNotification({ type: 'success', message: 'Demand saved successfully.' })
+      router.refresh()
+      return true
+    }
+    setNotification({ type: 'error', message: result.error })
+    return false
+  }
+
   function handleSave() {
     if (!canSave || busy) return
     setNotification(null)
     startSave(async () => {
-      const result = await saveDemand(buildSavePayload())
-      if (result.ok) {
-        setNotification({ type: 'success', message: 'Demand saved successfully.' })
-        router.refresh()
-      } else {
-        setNotification({ type: 'error', message: result.error })
-      }
+      await persist()
+    })
+  }
+
+  function handleNext() {
+    if (busy || readOnly) return
+    if (!stepValid(activeTab)) {
+      setNotification({ type: 'error', message: tc('fillRequired') })
+      return
+    }
+    setNotification(null)
+    startSave(async () => {
+      const ok = await persist()
+      if (ok) steps.advance()
     })
   }
 
@@ -637,59 +663,10 @@ export function DemandWorkspace({
     })
   }
 
-  const wizardStep = deriveWizardStep(recordStatus, form)
   const completeness = calcCompleteness(form)
 
   return (
     <div className="space-y-6">
-      {/* G-37: Step progress indicator */}
-      <div className="rounded-md border border-border bg-white px-4 py-3">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">Progress</p>
-          <span className={cn(
-            'rounded-full px-3 py-0.5 text-xs font-semibold',
-            completeness >= 80 ? 'bg-diriyah-green/10 text-diriyah-green' :
-            completeness >= 50 ? 'bg-diriyah-amber/15 text-[#8a5a3b]' :
-            'bg-diriyah-red/10 text-diriyah-red',
-          )}>
-            {recordStatus ?? 'Draft'} — {completeness}% complete
-          </span>
-        </div>
-        <ol className="flex items-center gap-0">
-          {WIZARD_STEPS.map((step, i) => {
-            const stepNum = i + 1
-            const done = wizardStep > stepNum
-            const active = wizardStep === stepNum
-            return (
-              <li key={step.label} className="flex flex-1 items-center">
-                <div className="flex flex-col items-center gap-1">
-                  <span className={cn(
-                    'flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold',
-                    done ? 'border-diriyah-green bg-diriyah-green text-white' :
-                    active ? 'border-diriyah-primary bg-diriyah-primary text-white' :
-                    'border-diriyah-bg-secondary bg-white text-text-muted',
-                  )}>
-                    {done ? '✓' : stepNum}
-                  </span>
-                  <span className={cn(
-                    'hidden text-[10px] font-semibold md:block',
-                    active ? 'text-diriyah-primary' : done ? 'text-diriyah-green' : 'text-text-muted',
-                  )}>
-                    {step.label}
-                  </span>
-                </div>
-                {i < WIZARD_STEPS.length - 1 && (
-                  <div className={cn(
-                    'mb-4 h-0.5 flex-1 mx-1',
-                    done ? 'bg-diriyah-green' : 'bg-diriyah-bg-secondary',
-                  )} />
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </div>
-
       <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
@@ -714,16 +691,16 @@ export function DemandWorkspace({
           <div
             className={cn(
               'rounded-md border px-4 py-3',
-              isAdHoc ? 'border-diriyah-amber/40 bg-diriyah-amber/10' : 'border-diriyah-green/30 bg-diriyah-green/10',
+              isStandalone ? 'border-diriyah-amber/40 bg-diriyah-amber/10' : 'border-diriyah-green/30 bg-diriyah-green/10',
             )}
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Route</p>
-            <p className="mt-0.5 text-sm font-semibold text-text">{entryRoute}</p>
+            <p className="mt-0.5 text-sm font-semibold text-text">{routeLabel}</p>
           </div>
           {recordStatus && (
             <div className="rounded-md border border-border bg-white px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Status</p>
-              <p className="mt-0.5 text-sm font-semibold text-text">{recordStatus}</p>
+              <p className="mt-0.5 text-sm font-semibold text-text">{recordStatus} — {completeness}%</p>
             </div>
           )}
         </div>
@@ -772,34 +749,23 @@ export function DemandWorkspace({
         </div>
       )}
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {DEMAND_TAB_IDS.map((tabId) => (
-          <button
-            key={tabId}
-            type="button"
-            onClick={() => setActiveTab(tabId)}
-            className={cn(
-              'shrink-0 border-b-2 px-3 py-2 text-xs font-semibold transition',
-              activeTab === tabId
-                ? 'border-diriyah-primary text-diriyah-primary'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {DEMAND_TAB_LABELS[tabId]}
-          </button>
-        ))}
-      </div>
+      <FormStepRail
+        steps={visibleTabs.map((tabId) => ({ id: tabId, label: DEMAND_TAB_LABELS[tabId] }))}
+        currentId={activeTab}
+        maxReached={steps.maxReached}
+        onSelect={(id) => steps.select(id)}
+      />
 
       {activeTab === 'identity' && (
         <section className="overflow-hidden rounded-md border border-border bg-white p-0">
           <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold text-text">Identity</h2>
-            <p className="text-sm text-text-muted">Title, classification, owners, and origin.</p>
+            <p className="text-sm text-text-muted">Title, optional strategy link, classification, owners, and origin.</p>
           </div>
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">
               <span className="text-sm font-medium text-text">
-                Demand Title <span className="text-diriyah-red">*</span>
+                Demand Title <RequiredMark />
               </span>
               <input
                 className="input-base"
@@ -810,6 +776,50 @@ export function DemandWorkspace({
                 disabled={readOnly}
               />
             </label>
+            <label className="block space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-text">Linked strategy</span>
+              <select
+                className="input-base"
+                value={form.strategy_id}
+                onChange={(e) => {
+                  if (readOnly) return
+                  setForm((prev) => ({
+                    ...prev,
+                    strategy_id: e.target.value,
+                    objective_ids: [],
+                    kpi_ids: [],
+                  }))
+                  setNotification(null)
+                }}
+                disabled={readOnly}
+              >
+                <option value="">Standalone (ad-hoc) — no strategy</option>
+                {strategies.map((s) => (
+                  <option key={s.strategy_id} value={s.strategy_id}>
+                    {s.strategy_title} ({s.strategy_id})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-text-muted">
+                Optional. Leave empty to keep this demand standalone (ad-hoc). Choose an approved
+                strategy to align it.
+              </p>
+            </label>
+            {!hasStrategy ? (
+              <label className="block space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-text">
+                  Ad-hoc justification <RequiredMark />
+                </span>
+                <textarea
+                  className="input-base min-h-24 py-3"
+                  value={form.ad_hoc_justification}
+                  onChange={patch('ad_hoc_justification')}
+                  placeholder="Why this demand is standalone and not linked to a strategy…"
+                  disabled={readOnly}
+                />
+                <p className="text-xs text-text-muted">At least 20 characters when no strategy is linked.</p>
+              </label>
+            ) : null}
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-text">Demand Type</span>
               <select className="input-base" value={form.demand_type} onChange={patch('demand_type')} disabled={readOnly}>
@@ -902,7 +912,7 @@ export function DemandWorkspace({
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">
               <span className="text-sm font-medium text-text">
-                Problem / Opportunity Statement <span className="text-diriyah-red">*</span>
+                Problem / Opportunity Statement <RequiredMark />
               </span>
               <textarea
                 className="input-base min-h-28 py-3"
@@ -958,75 +968,47 @@ export function DemandWorkspace({
       )}
 
       {activeTab === 'alignment' && (
-        isAdHoc ? (
+        isStandalone ? (
           <section className="overflow-hidden rounded-md border border-border bg-white p-0">
             <div className="border-b border-border bg-diriyah-amber/15 px-6 py-4">
-              <h2 className="text-sm font-semibold text-text">Ad-Hoc Justification (BR-005)</h2>
+              <h2 className="text-sm font-semibold text-text">Standalone / ad-hoc demand</h2>
               <p className="text-sm text-text-muted">
-                Strategic alignment is hidden for ADHOC entry. Justification is mandatory (≥20 characters).
+                No strategy is linked. Add an optional note, or pick a strategy on the Identity tab.
               </p>
             </div>
             <div className="px-6 py-6">
               <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-text">
-                  Ad-Hoc Justification <span className="text-diriyah-red">*</span>
-                </span>
+              <span className="text-sm font-medium text-text">Ad-hoc note</span>
                 <textarea
                   className="input-base min-h-32 py-3"
                   value={form.ad_hoc_justification}
                   onChange={patch('ad_hoc_justification')}
-                  required
+                  placeholder="Why this demand is standalone and not linked to a strategy…"
                   disabled={readOnly}
                 />
-                <p className="text-xs text-text-muted">{form.ad_hoc_justification.trim().length} / 20 min chars</p>
               </label>
             </div>
           </section>
         ) : (
           <section className="overflow-hidden rounded-md border border-border bg-white p-0">
             <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold text-text">Strategic Alignment (BR-005)</h2>
-              <p className="text-sm text-text-muted">Map this demand to an approved Strategy, Objectives, and KPIs.</p>
+              <h2 className="text-sm font-semibold text-text">Strategic Alignment</h2>
+              <p className="text-sm text-text-muted">
+                Map this demand to objectives and KPIs for{' '}
+                <span className="font-medium text-text">{selectedStrategy?.strategy_title ?? form.strategy_id}</span>.
+                Change the strategy on the Identity tab.
+              </p>
             </div>
             <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
-              <label className="block space-y-1.5 md:col-span-2">
-                <span className="text-sm font-medium text-text">
-                  Strategy <span className="text-diriyah-red">*</span>
-                </span>
-                <select
-                  className="input-base"
-                  value={form.strategy_id}
-                  onChange={(e) => {
-                    if (readOnly) return
-                    setForm((prev) => ({
-                      ...prev,
-                      strategy_id: e.target.value,
-                      objective_ids: [],
-                      kpi_ids: [],
-                    }))
-                  }}
-                  required
-                  disabled={readOnly}
-                >
-                  <option value="">Select approved strategy…</option>
-                  {strategies.map((s) => (
-                    <option key={s.strategy_id} value={s.strategy_id}>
-                      {s.strategy_title} ({s.strategy_id})
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="block space-y-1.5 md:col-span-2">
                 <span className="text-sm font-medium text-text">Strategic Contribution</span>
                 <textarea className="input-base min-h-20 py-3" value={form.strategic_contribution_statement} onChange={patch('strategic_contribution_statement')} disabled={readOnly} />
               </label>
               <div className="space-y-2">
-                <p className="text-sm font-medium text-text">
-                  Objectives <span className="text-diriyah-red">*</span>
-                </p>
+                <p className="text-sm font-medium text-text">Objectives</p>
                 <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border bg-diriyah-bg-alt/50 p-3">
                   {availableObjectives.length === 0 ? (
-                    <p className="text-sm text-text-muted">Select a strategy to load objectives.</p>
+                    <p className="text-sm text-text-muted">This strategy has no objectives yet.</p>
                   ) : (
                     availableObjectives.map((o) => (
                       <label key={o.objective_id} className="flex items-center gap-2 text-sm">
@@ -1716,36 +1698,46 @@ export function DemandWorkspace({
         </div>
       )}
 
-      {!isLocked && !readOnly && (
-        <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            className="btn h-11 border-border bg-white px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canSave || busy}
-            onClick={handleSave}
-          >
-            {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {savePending ? t('saving') : t('saveDemand')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary inline-flex h-11 items-center gap-2 px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canSubmit || busy}
-            onClick={handleSubmit}
-            title={
-              !br016Valid
-                ? 'BR-016: Title and Problem Statement are required.'
-                : !br017Valid
-                  ? 'BR-017: Mark one option as "Do Nothing" before submission.'
-                  : !br005Valid
-                    ? 'BR-005: Strategy / justification required.'
-                    : 'Submit demand for validation.'
-            }
-          >
-            {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {submitPending ? t('submitting') : t('submitDemand')}
-          </button>
-        </div>
+      {!readOnly && (
+        <FormStepActions
+          isFirst={steps.isFirst}
+          isLast={steps.isLast}
+          onBack={steps.goBack}
+          onNext={handleNext}
+          nextDisabled={!stepValid(activeTab)}
+          nextPending={savePending}
+          hideNext={steps.isLast}
+        >
+          {steps.isLast ? (
+            <>
+              <button
+                type="button"
+                className="btn h-11 border-border bg-white px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canSave || busy}
+                onClick={handleSave}
+              >
+                {savePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {savePending ? t('saving') : t('saveDemand')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary inline-flex h-11 items-center gap-2 px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canSubmit || busy}
+                onClick={handleSubmit}
+                title={
+                  !br016Valid
+                    ? 'BR-016: Title and Problem Statement are required.'
+                    : !br017Valid
+                      ? 'BR-017: Mark one option as "Do Nothing" before submission.'
+                      : 'Submit demand for validation.'
+                }
+              >
+                {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {submitPending ? t('submitting') : t('submitDemand')}
+              </button>
+            </>
+          ) : null}
+        </FormStepActions>
       )}
     </div>
   )

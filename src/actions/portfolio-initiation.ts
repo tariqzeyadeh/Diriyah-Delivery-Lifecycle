@@ -59,7 +59,7 @@ export async function initiatePortfolioRecord(
   const created_by = (payload.created_by?.trim() || 'system').slice(0, 128)
   const workingTitle = (
     payload.title?.trim() ||
-    (entry_route === EntryRoute.STRATEGIC ? 'New Strategic Initiative' : 'New Ad-hoc Demand')
+    (entry_route === EntryRoute.STRATEGIC ? 'New Strategy' : 'New Demand')
   ).slice(0, 255)
 
   try {

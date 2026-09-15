@@ -1,12 +1,12 @@
 'use server'
 
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { randomInt } from 'crypto'
 import { VersionStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CACHE_TAGS } from '@/src/lib/cache-tags'
 import { auditLog, captureException } from '@/src/lib/logger'
-import { requireRole } from '@/src/lib/auth/server-guard'
+import { getServerPersonaEmail, requireRole } from '@/src/lib/auth/server-guard'
 import { checkDocumentPack } from '@/lib/atlas/document-pack'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,6 +24,108 @@ function n(v: unknown): number {
 
 function round2(v: number) {
   return Math.round((v + Number.EPSILON) * 100) / 100
+}
+
+export type CreateBudgetFromDemandResult =
+  | { ok: true; budget_submission_id: string; already_existed: boolean }
+  | { ok: false; error: string }
+
+/**
+ * Opens a BudgetSubmission draft for a selected demand.
+ * Reuses the demand's Master Trace and strategy_id. Idempotent per demand.
+ */
+export async function createBudgetFromDemand(payload: {
+  demand_id: string
+  created_by?: string
+}): Promise<CreateBudgetFromDemandResult> {
+  const rbac = await requireRole('Commercial & Budgeting', 'CTO Office')
+  if (rbac) return rbac
+
+  const demand_id = payload.demand_id?.trim()
+  if (!demand_id) return { ok: false, error: 'Select a demand.' }
+
+  const created_by = (
+    payload.created_by?.trim() ||
+    (await getServerPersonaEmail()) ||
+    'system'
+  ).slice(0, 128)
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const demand = await tx.demand.findUnique({
+        where: { demand_id },
+        select: {
+          demand_id: true,
+          master_trace_id: true,
+          strategy_id: true,
+          entry_route: true,
+        },
+      })
+      if (!demand) throw new Error(`Demand not found: ${demand_id}`)
+
+      const existing = await tx.budgetSubmission.findFirst({
+        where: { parent_record_id: demand.demand_id },
+        select: { budget_submission_id: true },
+      })
+      if (existing) {
+        return { budget_submission_id: existing.budget_submission_id, already_existed: true }
+      }
+
+      let budget_submission_id = generateId('BUD')
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const clash = await tx.budgetSubmission.findUnique({
+          where: { budget_submission_id },
+          select: { budget_submission_id: true },
+        })
+        if (!clash) break
+        budget_submission_id = generateId('BUD')
+      }
+
+      await tx.budgetSubmission.create({
+        data: {
+          budget_submission_id,
+          master_trace_id: demand.master_trace_id,
+          strategy_id: demand.strategy_id,
+          entity_type: 'BUDGET_SUBMISSION',
+          entry_route: demand.entry_route,
+          record_status: 'DRAFT',
+          parent_record_id: demand.demand_id,
+          budget_cycle: 'Annual Plan',
+          budget_scenario: 'Requested',
+          base_currency: 'SAR',
+          is_locked: false,
+          created_by,
+          version_number: 1,
+        },
+      })
+
+      return { budget_submission_id, already_existed: false }
+    })
+
+    revalidateTag(CACHE_TAGS.PORTFOLIO_METRICS, 'max')
+    for (const locale of ['en', 'ar'] as const) {
+      revalidatePath(`/${locale}/budget`)
+    }
+    auditLog({
+      action_type: 'CREATE_BUDGET',
+      entity_type: 'BUDGET_SUBMISSION',
+      entity_id: result.budget_submission_id,
+      active_user_id: created_by,
+      outcome: 'success',
+    })
+
+    return { ok: true, ...result }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to create budget'
+    captureException(err, {
+      action_type: 'CREATE_BUDGET',
+      entity_id: demand_id,
+      active_user_id: created_by,
+      outcome: 'failure',
+      error: message,
+    })
+    return { ok: false, error: message }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

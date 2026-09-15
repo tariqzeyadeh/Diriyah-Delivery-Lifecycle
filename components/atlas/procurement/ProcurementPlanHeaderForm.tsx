@@ -10,8 +10,15 @@ import {
 } from '@/src/actions/procurement'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { cn } from '@/lib/utils'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 type PlanTab = 'header' | 'sourcing' | 'milestones'
+const PLAN_TAB_IDS: PlanTab[] = ['header', 'sourcing', 'milestones']
 
 type MilestoneRow = {
   id: string
@@ -51,7 +58,7 @@ function Field({
     <div className="space-y-1.5">
       <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
         {label}
-        {required && <span className="ml-1 text-red-500">*</span>}
+        {required ? <> <RequiredMark /></> : null}
       </label>
       {children}
     </div>
@@ -65,11 +72,13 @@ export type ProcurementPlanHeaderFormProps = {
 export function ProcurementPlanHeaderForm({ plan }: ProcurementPlanHeaderFormProps) {
   const t = useTranslations('procurementPlan')
   const tp = useTranslations('procurement')
+  const tc = useTranslations('common')
   const router = useRouter()
   const { currentUser } = useAuth()
 
   const isLocked = plan.is_locked && plan.record_status !== 'DRAFT'
-  const [activeTab, setActiveTab] = useState<PlanTab>('header')
+  const steps = useFormSteps(PLAN_TAB_IDS, 'header', isLocked)
+  const activeTab = steps.currentId as PlanTab
 
   const [title, setTitle] = useState(plan.procurement_plan_title)
   const [startDate, setStartDate] = useState(plan.plan_start_date ?? '')
@@ -96,24 +105,42 @@ export function ProcurementPlanHeaderForm({ plan }: ProcurementPlanHeaderFormPro
     { id: 'ms-6', name: 'Acceptance Sign-off', target_date: '', stage: 'ACCEPTANCE', responsible: '' },
   ])
 
+  async function persist(): Promise<boolean> {
+    const res = await saveProcurementPlanHeader({
+      procurement_plan_id: plan.procurement_plan_id,
+      procurement_plan_title: title,
+      plan_start_date: startDate || null,
+      plan_end_date: endDate || null,
+      procurement_plan_owner_user_id: owner || null,
+      release_authorization_status: authStatus || null,
+      modified_by: currentUser.email,
+    })
+    if (res.ok) {
+      setResult({ ok: true, message: t('saveSuccess') })
+      router.refresh()
+      return true
+    }
+    setResult({ ok: false, message: res.error })
+    return false
+  }
+
   function save() {
     startTransition(async () => {
       setResult(null)
-      const res = await saveProcurementPlanHeader({
-        procurement_plan_id: plan.procurement_plan_id,
-        procurement_plan_title: title,
-        plan_start_date: startDate || null,
-        plan_end_date: endDate || null,
-        procurement_plan_owner_user_id: owner || null,
-        release_authorization_status: authStatus || null,
-        modified_by: currentUser.email,
-      })
-      if (res.ok) {
-        setResult({ ok: true, message: t('saveSuccess') })
-        router.refresh()
-      } else {
-        setResult({ ok: false, message: res.error })
-      }
+      await persist()
+    })
+  }
+
+  function handleNext() {
+    if (pending || isLocked) return
+    if (activeTab === 'header' && !title.trim()) {
+      setResult({ ok: false, message: tc('fillRequired') })
+      return
+    }
+    startTransition(async () => {
+      setResult(null)
+      const ok = await persist()
+      if (ok) steps.advance()
     })
   }
 
@@ -136,24 +163,12 @@ export function ProcurementPlanHeaderForm({ plan }: ProcurementPlanHeaderFormPro
         <p className="max-w-2xl text-sm text-text-muted">{t('desc')}</p>
       </div>
 
-      {/* Tab nav */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {PLAN_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex-1 border-b-2 px-3 py-2 text-xs font-semibold transition-colors',
-              activeTab === tab.id
-                ? 'border-diriyah-primary text-diriyah-primary'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <FormStepRail
+        steps={PLAN_TABS}
+        currentId={activeTab}
+        maxReached={steps.maxReached}
+        onSelect={(id) => steps.select(id)}
+      />
 
       {/* ── Sourcing Strategy Tab ────────────────────────────────────────────── */}
       {activeTab === 'sourcing' && (
@@ -431,20 +446,33 @@ export function ProcurementPlanHeaderForm({ plan }: ProcurementPlanHeaderFormPro
               <span>{result.message}</span>
             </div>
           )}
-          {!isLocked && (
-            <button
-              type="button"
-              onClick={save}
-              disabled={pending}
-              className="inline-flex h-10 items-center rounded-md bg-diriyah-primary px-5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {pending ? t('saving') : t('saveHeader')}
-            </button>
-          )}
         </div>
       </div>
 
       </> /* end activeTab === 'header' */ }
+
+      {!isLocked && (
+        <FormStepActions
+          isFirst={steps.isFirst}
+          isLast={steps.isLast}
+          onBack={steps.goBack}
+          onNext={handleNext}
+          nextDisabled={activeTab === 'header' && !title.trim()}
+          nextPending={pending}
+          hideNext={steps.isLast}
+        >
+          {steps.isLast ? (
+            <button
+              type="button"
+              onClick={save}
+              disabled={pending}
+              className="inline-flex h-11 items-center rounded-md bg-diriyah-primary px-5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {pending ? t('saving') : t('saveHeader')}
+            </button>
+          ) : null}
+        </FormStepActions>
+      )}
     </div>
   )
 }

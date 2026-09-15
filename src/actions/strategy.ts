@@ -556,7 +556,7 @@ export async function getStrategyWorkspace(strategyId: string) {
           kpis: { orderBy: { created_at: 'asc' } },
         },
       },
-      // G-05: downstream parallel branches created on G-S1 approval
+      // Demands that later link this strategy (not auto-spawned at G-S1)
       demands: {
         select: {
           demand_id: true,

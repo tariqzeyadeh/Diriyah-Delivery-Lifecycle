@@ -33,25 +33,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: 'What is a Master Trace ID?',
     summary:
       'Every initiative rides a spine ID such as TECH-2027-0001 from strategy through project registration.',
-    body: 'When you create a New Record on the Pre-Initiation Cockpit, Diriyah opens a MasterTrace (for example TECH-2027-XXXX). Strategy, Demand, Budget, Procurement, and Project children all inherit this ID. Use Traceability Explorer to audit the full cascade. Never invent a parallel spreadsheet ID — the Master Trace is the system of record.',
+    body: 'When you create a New Record, Diriyah opens a MasterTrace (for example TECH-2027-XXXX) plus either a Strategy or a Demand. If you later link an approved strategy on the demand Identity tab, the demand is re-parented onto that strategy’s Master Trace so Strategy → Demand → Budget stay one cascade. Use Traceability Explorer to audit the spine. Never invent a parallel spreadsheet ID — the Master Trace is the system of record.',
     tags: ['master trace', 'TECH-', 'spine', 'traceability'],
   },
   {
     id: 'demand-br005-strategic',
     category: 'Demand Submission',
-    title: 'Why can’t I save my demand without strategy alignment?',
+    title: 'Do I have to link a strategy on my demand?',
     summary:
-      'Strategic entry routes enforce BR-005: Strategy, Objectives, and KPI mapping are mandatory.',
-    body: 'On a STRATEGIC route, Business Owners must link an approved Strategy and at least one Objective before Save Demand Case is enabled. This prevents untraceable demand from entering the funding pipeline. Complete Strategic Alignment on the Demand workspace, then save.',
+      'Linked strategy is optional. Empty selection is a standalone ad-hoc demand (BR-005).',
+    body: 'On the Demand Identity tab, Linked strategy may be left empty. That demand stays on its own Master Trace as ADHOC. If you pick an approved strategy (after G-S1), the demand is attached to that strategy’s Master Trace and treated as STRATEGIC. G-S1 does not create demand or budget for you — create a Demand from New Record when you are ready.',
     tags: ['BR-005', 'demand', 'alignment', 'strategic'],
   },
   {
     id: 'demand-adhoc-bypass',
     category: 'Demand Submission',
-    title: 'How do I bypass the strategy gate?',
+    title: 'How do I raise a demand without a strategy?',
     summary:
-      'Use the Ad-Hoc entry route — alignment is hidden, but a written justification becomes mandatory.',
-    body: 'Genuine emergencies use EntryRoute = ADHOC (for example /demand/DEM-…?route=ADHOC). Diriyah hides Strategic Alignment so you are not forced to fabricate strategy links. Instead, Ad-Hoc Justification (≥ 20 characters) is required before save. Bypass is allowed — invisibility is not. The Master Trace still records ADHOC for audit.',
+      'New Record → Demand, then leave Linked strategy empty on Identity. A written ad-hoc justification is still required.',
+    body: 'Use + New Record and choose Demand (or the Demand list New Record button). Leave Linked strategy empty for a standalone ad-hoc case. Diriyah records EntryRoute = ADHOC. Ad-Hoc Justification (≥ 20 characters) is required before save. Bypass is allowed — invisibility is not. Budget is created when you submit the demand, not at G-S1.',
     tags: ['ad-hoc', 'ADHOC', 'BR-005', 'bypass', 'justification'],
   },
   {

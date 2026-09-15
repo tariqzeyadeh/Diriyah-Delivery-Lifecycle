@@ -22,18 +22,70 @@ If a gate shows **Awaiting … Approval**, you are on the wrong persona.
 
 ---
 
-## Two entry routes
+## Gate and stage names
 
-Choose this once, in the **+ New Record** modal.
+Keep the **codes** (`G-S1`, `PI-04`, …). They are the audit IDs. Show a **short name** next to the code: `G-S1 · Strategy Gate`.
 
-| Route | What is created | What you skip |
+**Gates (`G-*`)** are approvals. **Stages (`PI-*`)** are work (filling forms). Do not invent extra gate numbers unless there is a real approve button.
+
+### Decision gates (`G-*`)
+
+| Code | Short name | Page title | Arabic | Who |
+| --- | --- | --- | --- | --- |
+| **G-S1** | Strategy Gate | CTO Strategy Gate | بوابة الاستراتيجية | CTO Office |
+| **G-ARCH1** | Architecture Review | Architecture Review Gate | بوابة مراجعة العمارة | Strategy & Governance |
+| **G-SEC1** | Security Review | Information Security Gate | بوابة مراجعة الأمن | CTO Office |
+| **G-DATA1** | Data Review | Data Governance Gate | بوابة حوكمة البيانات | Strategy & Governance |
+| **G-B1** | Budget Gate | CTO Budget Gate | بوابة الميزانية | CTO Office |
+| **G-PMO1** | PMO Gate | PMO Registration Gate | بوابة تسجيل مكتب المشاريع | PMO |
+
+Use **PMO Registration Gate** as the long name for G-PMO1 (it creates `PRJ-…`). “Handoff” is help text only: open after Kanban Acceptance / Completed.
+
+If executives want Gate 1 / Gate 2 / Gate 3: **Gate 1 = G-S1**, **Gate 2 = G-B1**, **Gate 3 = G-PMO1**. ARCH / SEC / DATA stay conditional reviews, not numbered gates.
+
+### Work stages (`PI-*`)
+
+| Code | Short name | Arabic | What happens |
+| --- | --- | --- | --- |
+| **PI-01** | Strategy Formulation | صياغة الاستراتيجية | Write strategy, then submit to G-S1 |
+| **PI-04** | Demand Case | حالة الطلب | Write demand; submit creates budget draft |
+| **PI-05** | Conditional Reviews | المراجعات المشروطة | G-ARCH1 / G-SEC1 / G-DATA1 if flags are on |
+| **PI-06** | Demand Validation | التحقق من الطلب | Commercial check before budget work |
+
+`PI-02` / `PI-03` are leftover from the old “parallel demand + budget after G-S1” map. Do not put those names on screen. Budget work is not a gate; it sits between demand submit and **G-B1**.
+
+### After G-B1 (no extra G-code)
+
+| What | Suggested name | Arabic |
 | --- | --- | --- |
-| **Strategic Initiative** | Master Trace + Strategy draft (`STR-…`) | Nothing. This is the normal path. |
-| **Ad-Hoc Demand** | Master Trace + Demand draft (`DEM-…`) | Strategy workspace and **G-S1**. Ad-hoc justification (≥ 20 characters) is mandatory. |
+| Procurement Kanban | Procurement | المشتريات |
+| Project register | Project Registration | تسجيل المشروع |
 
-Ad-hoc still goes through demand reviews (if flagged), validation, budget, G-B1, procurement, and PMO. Bypass is allowed; hiding the bypass from the audit trail is not.
+Do not invent `G-PROC1` unless you add a real approval there. Kanban is movement, not a gate.
 
-The rest of this file is the **strategic** path. Ad-hoc joins at [Stage 4](#stage-4--demand-business-case).
+### How to show them
+
+- **Buttons:** keep the code — `Submit to G-S1` / `تقديم إلى G-S1`.
+- **Headings:** `G-S1 · Strategy Gate`.
+- **Eyebrows:** `PI-04 · Demand Case`.
+- **Arabic:** keep the Latin code and add the Arabic name — `G-S1 · بوابة الاستراتيجية`.
+
+---
+
+## Two New Record types
+
+**+ New Record** (Home / header) offers **Strategy** or **Demand**. On the Strategy list the button creates a strategy immediately; on the Demand list it creates a demand immediately. There is no New Record on the Budget register — a budget draft is created when a demand is **submitted**.
+
+| Choice | What is created | What happens next |
+| --- | --- | --- |
+| **Strategy** | Master Trace + Strategy draft (`STR-…`) | Write the strategy, submit **G-S1**. Approval **completes the strategy**. It does **not** create Demand or Budget. |
+| **Demand** | Master Trace + Demand draft (`DEM-…`) | Optional: on Identity, link an **approved** strategy (re-parents onto that strategy’s `TECH-…`). Leave empty = standalone ad-hoc. Ad-hoc justification (≥ 20 characters) is mandatory when standalone. |
+
+Standalone demand still goes through reviews (if flagged), validation, budget (on submit), G-B1, procurement, and PMO. Bypass is allowed; hiding the bypass from the audit trail is not.
+
+When a demand links an approved strategy, it joins that strategy’s Master Trace so traceability stays one cascade (`TECH-` → STR → DEM → BUD → PIT → PRJ).
+
+The rest of this file is the **strategy first** path. Demand-only joins at [Stage 4](#stage-4--demand-business-case).
 
 ---
 
@@ -50,13 +102,13 @@ From Home you can open an existing row, click **+ New Record**, or use the sideb
 
 ## Stage 1 — Create a new record
 
-1. Click **+ New Record** (Home or header).
-2. Choose **Strategic Initiative** or **Ad-Hoc Demand**.
-3. Click **Continue** (or Cancel / × / Escape / backdrop to close).
+1. Click **+ New Record** (Home or header), or the page-level button on Strategy / Demand.
+2. From Home / header: choose **Strategy** or **Demand**, then **Continue** (or Cancel / × / Escape / backdrop to close).
+3. From `/strategy` or `/demand`: the matching create runs without the chooser.
 
-**Strategic:** the system creates `TECH-…` + `STR-…` (`DRAFT`) and opens `/strategy/{strategy_id}`.
+**Strategy:** the system creates `TECH-…` + `STR-…` (`DRAFT`) and opens `/strategy/{strategy_id}`.
 
-**Ad-hoc:** the system creates `TECH-…` + `DEM-…` (`DRAFT`) and opens `/demand/{demand_id}?route=ADHOC`. Skip to Stage 4.
+**Demand:** the system creates `TECH-…` + `DEM-…` (`DRAFT`) and opens `/demand/{demand_id}`. If you used **Create demand** from an approved strategy, the URL includes `?strategy=STR-…` so Identity can preselect that strategy. Skip to Stage 4.
 
 ---
 
@@ -99,12 +151,12 @@ Demand and budget are **not** created yet.
 
 | Decision | What happens |
 | --- | --- |
-| **Approve** | Strategy `APPROVED` and locked. Receipt + version hash written. **Demand draft** and **Budget draft** are created on the same `TECH-…`. |
-| **Approve with Conditions** | Same spawn of Demand + Budget. **Conditions text is mandatory** (**BR-012**). |
+| **Approve** | Strategy `APPROVED` and locked. Receipt + version hash written. **Demand and Budget are not created.** |
+| **Approve with Conditions** | Same: strategy complete only. **Conditions text is mandatory** (**BR-012**). |
 | **Return for revision** | Unlock for correction. **Comments mandatory**. Status `RETURNED`. Re-submit raises `version_number`. History is kept. |
 | **Reject** | Record closed in place (**BR-011**). Not deleted. Do not reopen the same receipt as a new draft; start a new Master Trace if needed. |
 
-After **Approve**, you have one spine with three children: approved Strategy + draft Demand + draft Budget. Demand and budget work **in parallel**.
+After **Approve**, the strategy workspace shows **G-S1 complete** and a **Create demand** action. Create Demand when you are ready (optionally preselect this strategy). Budget appears only after that demand is submitted.
 
 ---
 
@@ -115,10 +167,10 @@ After **Approve**, you have one spine with three children: approved Strategy + d
 
 Newest demands sit at the top of the list.
 
-### 4.1 Strategic demand
+### 4.1 Demand linked to an approved strategy
 
-1. Open the demand that was spawned after G-S1 (same Master Trace).
-2. Complete **Strategic Alignment**: approved strategy + at least one objective (KPIs recommended) (**BR-005**).
+1. Create a demand (**New Record** on `/demand`, or **Create demand** from the approved strategy).
+2. On **Identity**, select the approved strategy (or keep the `?strategy=` preselect). Empty = standalone (4.2). Saving with a strategy selected attaches this demand to the strategy’s Master Trace.
 3. Fill the case: title, urgency, business impact, current state, problem / opportunity, in-scope / out-of-scope, strategic contribution.
 4. Enter indicative one-off / recurring / TCO costs (SAR).
 5. Add **options** (including do-nothing) and expected **benefits**.
@@ -128,14 +180,14 @@ Newest demands sit at the top of the list.
    - Security / privacy impact → later **G-SEC1**
    - Data governance impact → later **G-DATA1**
 8. Fill **Mandate Statement** / **Business Case** tab text (this is what the document-pack check looks for — there is no separate file-upload control for that pack item).
-9. **Save**, then **Submit**.
+9. **Save**, then **Submit**. Submit creates a **Budget draft** on the same Master Trace (one `BUD-` per demand; skipped if one already exists for that demand).
 
-### 4.2 Ad-hoc demand (if you skipped strategy)
+### 4.2 Standalone / ad-hoc demand (no strategy)
 
-1. Strategic alignment fields are hidden.
+1. Leave **Linked strategy** empty on Identity.
 2. Write **Ad-Hoc Justification** (≥ 20 characters).
-3. Complete the rest of the case as in 4.1 (except strategy mapping).
-4. Save, then submit.
+3. Complete the rest of the case as in 4.1 (except strategy mapping). The demand keeps its own `TECH-…` as `ADHOC`.
+4. Save, then submit — same budget-on-submit behaviour.
 
 ---
 
@@ -177,7 +229,7 @@ Validated demand is what budget lines should hang off.
 **URL:** `/budget` → `/budget/{id}/lines` and `/budget/{id}/consolidation`  
 **Persona:** Commercial & Budgeting
 
-The budget draft already exists after G-S1 (strategic) or is created on the ad-hoc path when the demand is ready for funding.
+The budget draft is created when the demand is **submitted**. Until then `/budget` is empty for that spine (hint: submit a demand first).
 
 ### 7.1 Budget lines
 
@@ -318,11 +370,11 @@ These are not a second workflow. They read the same Master Trace.
 
 ## Full strategic chain (short)
 
-1. **Strategy & Governance** → Home → **+ New Record** → Strategic Initiative.  
+1. **Strategy & Governance** → Home → **+ New Record** → Strategy.  
 2. Fill strategy; objective weights = 100%; add KPIs.  
 3. **Submit to G-S1**.  
-4. **CTO Office** → `/gates/g-s1` → **Approve**. Demand + Budget drafts appear.  
-5. **Business Owner** → Demand: alignment, case, mandate/business case text, flags → Save → Submit.  
+4. **CTO Office** → `/gates/g-s1` → **Approve**. Strategy is complete; no DEM/BUD yet.  
+5. **Business Owner** → **+ New Record** → Demand (optional: link the approved strategy) → case, mandate/business case text, flags → Save → Submit (creates Budget draft).  
 6. If flags: reviewers close `/demand/reviews`.  
 7. Validation at `/demand/validate`.  
 8. **Commercial & Budgeting** → Budget lines → **Open Consolidation Pack** → Narrative (≥ 20 chars) → **Save Governance** → Submit to **G-B1**.  
@@ -331,7 +383,7 @@ These are not a second workflow. They read the same Master Trace.
 11. **PMO** → G-PMO1 → register `PRJ-…`.  
 12. Confirm on **Projects**, **Traceability**, Home / one-pager.
 
-**Ad-hoc** replaces steps 1–4 with: **+ New Record** → Ad-Hoc Demand → justification ≥ 20 characters → then continue from step 5.
+**Demand-only** replaces steps 1–4 with: **+ New Record** → Demand → leave strategy empty → justification ≥ 20 characters → then continue from step 5.
 
 ---
 
@@ -360,8 +412,8 @@ These are not a second workflow. They read the same Master Trace.
 | Symptom | What to do |
 | --- | --- |
 | Submit to G-S1 disabled | Objective weights not 100%, or no objectives. |
-| Demand will not save (strategic) | Link approved strategy + at least one objective. |
-| Demand will not save (ad-hoc) | Justification shorter than 20 characters. |
+| Demand will not save (standalone) | Justification shorter than 20 characters. |
+| Demand will not save (linked strategy) | Selected strategy is not approved at G-S1, or the strategy row was deleted. |
 | Submit to G-B1 fails CON-018 | Open Consolidation Pack, write Narrative ≥ 20 characters, Save Governance. |
 | G-B1: unresolved comments | Resolve **validation findings** only; evidence chat is not a blocker. |
 | Over-commit warning | Informational if ceiling > 0 and requested > ceiling. Raise ceiling on Budget Lines while still editable, or ignore / Return first if already submitted. |
@@ -383,11 +435,12 @@ These are not a second workflow. They read the same Master Trace.
 
 ## Briefly put
 
-1. **New Record** → Strategic Initiative (or Ad-Hoc Demand + justification).
-2. Fill **strategy** (weights = 100%) → **G-S1 Approve** (CTO).
-3. Fill **demand** → reviews if flagged → **validate**.
-4. **Budget lines** → Consolidation **Narrative** → **G-B1 Approve** (CTO).
-5. **Kanban** — one column at a time → Acceptance / Completed.
-6. **G-PMO1** → register project.
+1. **New Record** → Strategy **or** Demand.
+2. If Strategy: fill it (weights = 100%) → **G-S1 Approve** (CTO). Strategy is complete.
+3. **New Record** → Demand (optional: link the approved strategy) → Save → Submit (creates Budget).
+4. Reviews if flagged → **validate**.
+5. **Budget lines** → Consolidation **Narrative** → **G-B1 Approve** (CTO).
+6. **Kanban** — one column at a time → Acceptance / Completed.
+7. **G-PMO1** → register project.
 
-Ad-hoc skips step 2.
+Standalone demand skips step 2.

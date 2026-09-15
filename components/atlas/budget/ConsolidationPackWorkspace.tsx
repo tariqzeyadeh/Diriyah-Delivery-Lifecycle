@@ -22,6 +22,12 @@ import {
 } from '@/src/actions/consolidation'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { OfficialTag } from '@/components/atlas/records'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 import { cn } from '@/lib/utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,6 +47,9 @@ function fmtSar(v: number | null): string {
 function uid(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
+
+const CONSOL_STEPS = ['summary', 'recommendation', 'items', 'risks', 'conditions'] as const
+type ConsolStep = (typeof CONSOL_STEPS)[number]
 
 function Section({
   title,
@@ -402,10 +411,13 @@ export function ConsolidationPackWorkspace({
   budgetSubmissionId,
 }: ConsolidationPackWorkspaceProps) {
   const t = useTranslations('consolidation')
+  const tc = useTranslations('common')
   const router = useRouter()
   const { currentUser } = useAuth()
 
   const isLocked = pack.is_locked
+  const steps = useFormSteps([...CONSOL_STEPS], 'summary', isLocked)
+  const activeStep = steps.currentId as ConsolStep
 
   const [summary, setSummary] = useState(pack.funding_recommendation_summary ?? '')
   const [recommendedAmt, setRecommendedAmt] = useState(
@@ -417,24 +429,42 @@ export function ConsolidationPackWorkspace({
   const [pending, startTransition] = useTransition()
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
 
+  async function persist(): Promise<boolean> {
+    const res = await saveConsolidationPack({
+      budget_submission_id: budgetSubmissionId,
+      funding_recommendation_summary: summary,
+      specific_decision_items: decisionItems,
+      consolidation_risks: risks,
+      proposed_conditions: conditions,
+      recommended_amount_sar: recommendedAmt ? Number(recommendedAmt) : null,
+      modified_by: currentUser.email,
+    })
+    if (res.ok) {
+      setResult({ ok: true, message: t('saveSuccess') })
+      router.refresh()
+      return true
+    }
+    setResult({ ok: false, message: res.error })
+    return false
+  }
+
   function save() {
     startTransition(async () => {
       setResult(null)
-      const res = await saveConsolidationPack({
-        budget_submission_id: budgetSubmissionId,
-        funding_recommendation_summary: summary,
-        specific_decision_items: decisionItems,
-        consolidation_risks: risks,
-        proposed_conditions: conditions,
-        recommended_amount_sar: recommendedAmt ? Number(recommendedAmt) : null,
-        modified_by: currentUser.email,
-      })
-      if (res.ok) {
-        setResult({ ok: true, message: t('saveSuccess') })
-        router.refresh()
-      } else {
-        setResult({ ok: false, message: res.error })
-      }
+      await persist()
+    })
+  }
+
+  function handleNext() {
+    if (pending || isLocked) return
+    if (activeStep === 'recommendation' && summary.trim().length < 20) {
+      setResult({ ok: false, message: tc('fillRequired') })
+      return
+    }
+    startTransition(async () => {
+      setResult(null)
+      const ok = await persist()
+      if (ok) steps.advance()
     })
   }
 
@@ -483,7 +513,37 @@ export function ConsolidationPackWorkspace({
           </div>
         )}
 
+      <FormStepRail
+        steps={[
+          { id: 'summary', label: t('summarySection') },
+          { id: 'recommendation', label: t('con018Title') },
+          { id: 'items', label: t('con019Title') },
+          { id: 'risks', label: t('con020Title') },
+          { id: 'conditions', label: t('con021Title') },
+        ]}
+        currentId={activeStep}
+        maxReached={steps.maxReached}
+        onSelect={(id) => steps.select(id)}
+      />
+
+      {result && (
+        <div
+          className={cn(
+            'flex items-start gap-2.5 rounded-md px-4 py-3 text-sm',
+            result.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800',
+          )}
+        >
+          {result.ok ? (
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          )}
+          <span>{result.message}</span>
+        </div>
+      )}
+
       {/* Computed summary */}
+      {activeStep === 'summary' && (
       <Section title={t('summarySection')} defaultOpen>
         <dl className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
@@ -524,8 +584,10 @@ export function ConsolidationPackWorkspace({
           )}
         </div>
       </Section>
+      )}
 
       {/* CON-018: Funding Recommendation Summary */}
+      {activeStep === 'recommendation' && (
       <Section
         title={t('con018Title')}
         badge={
@@ -550,7 +612,7 @@ export function ConsolidationPackWorkspace({
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-              {t('summaryNarrative')} <span className="text-red-500">*</span>
+              {t('summaryNarrative')} <RequiredMark />
             </label>
             <textarea
               value={summary}
@@ -566,8 +628,10 @@ export function ConsolidationPackWorkspace({
           </div>
         </div>
       </Section>
+      )}
 
       {/* CON-019: Specific Decision Items */}
+      {activeStep === 'items' && (
       <Section title={t('con019Title')} defaultOpen={decisionItems.length > 0}>
         <div className="mt-2">
           <p className="mb-3 text-xs text-text-muted">{t('con019Hint')}</p>
@@ -578,53 +642,52 @@ export function ConsolidationPackWorkspace({
           />
         </div>
       </Section>
+      )}
 
       {/* CON-020: Consolidation Risks */}
+      {activeStep === 'risks' && (
       <Section title={t('con020Title')} defaultOpen={risks.length > 0}>
         <div className="mt-2">
           <p className="mb-3 text-xs text-text-muted">{t('con020Hint')}</p>
           <RisksEditor items={risks} onChange={setRisks} disabled={isLocked} />
         </div>
       </Section>
+      )}
 
       {/* CON-021: Proposed Conditions */}
+      {activeStep === 'conditions' && (
       <Section title={t('con021Title')} defaultOpen={conditions.length > 0}>
         <div className="mt-2">
           <p className="mb-3 text-xs text-text-muted">{t('con021Hint')}</p>
           <ConditionsEditor items={conditions} onChange={setConditions} disabled={isLocked} />
         </div>
       </Section>
+      )}
 
-      {/* Save */}
       {!isLocked && (
-        <div className="space-y-3">
-          {result && (
-            <div
-              className={cn(
-                'flex items-start gap-2.5 rounded-md px-4 py-3 text-sm',
-                result.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800',
-              )}
-            >
-              {result.ok ? (
-                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-              ) : (
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-              )}
-              <span>{result.message}</span>
+        <FormStepActions
+          isFirst={steps.isFirst}
+          isLast={steps.isLast}
+          onBack={steps.goBack}
+          onNext={handleNext}
+          nextDisabled={activeStep === 'recommendation' && summary.trim().length < 20}
+          nextPending={pending}
+          hideNext={steps.isLast}
+        >
+          {steps.isLast ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={save}
+                disabled={pending}
+                className="inline-flex h-11 items-center rounded-md bg-diriyah-primary px-5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {pending ? t('saving') : t('saveGovernance')}
+              </button>
+              <p className="text-xs text-text-muted">{t('saveHint')}</p>
             </div>
-          )}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={save}
-              disabled={pending}
-              className="inline-flex h-10 items-center rounded-md bg-diriyah-primary px-5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {pending ? t('saving') : t('saveGovernance')}
-            </button>
-          </div>
-          <p className="text-xs text-text-muted">{t('saveHint')}</p>
-        </div>
+          ) : null}
+        </FormStepActions>
       )}
     </div>
   )

@@ -25,7 +25,7 @@ export default async function StrategyIndexPage() {
         eyebrow={`PI-01 · ${tc('module')}`}
         title={t('pageTitle')}
         description={t('pageDesc')}
-        actions={<NewRecordButton compact />}
+        actions={<NewRecordButton compact intent="strategy" />}
       />
 
       {strategies.length === 0 ? (

@@ -10,6 +10,12 @@ import { OfficialTag } from '@/components/atlas/records'
 import { ragTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { CheckCircle2, AlertTriangle, Loader2, ArrowLeft, Save, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -64,6 +70,7 @@ function ScoreGauge({ score, rag }: { score: number | null; rag: string | null |
 }
 
 type Tab = 'details' | 'measures' | 'dependencies'
+const OBJECTIVE_TABS: Tab[] = ['details', 'measures', 'dependencies']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ObjectiveDetailWorkspace
@@ -78,27 +85,55 @@ export function ObjectiveDetailWorkspace({
 }) {
   const { currentUser } = useAuth()
   const t = useTranslations('objectiveDetail')
+  const tc = useTranslations('common')
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('details')
+  const steps = useFormSteps(OBJECTIVE_TABS, 'details')
+  const tab = steps.currentId as Tab
   const [commentary, setCommentary] = useState(objective.performance_commentary ?? '')
   const [correctiveAction, setCorrectiveAction] = useState(objective.corrective_action_summary ?? '')
   const [forecast, setForecast] = useState(objective.forecast_outcome_status ?? '')
   const [pending, startTransition] = useTransition()
   const [saveResult, setSaveResult] = useState<{ ok: boolean; error?: string } | null>(null)
 
+  const commentaryRequired = forecast === 'At Risk' || forecast === 'Off Track'
+  const actionRequired = forecast === 'At Risk'
+  const detailsValid =
+    (!commentaryRequired || commentary.trim().length > 0) &&
+    (!actionRequired || correctiveAction.trim().length > 0)
+
+  async function persist(): Promise<boolean> {
+    setSaveResult(null)
+    const res = await saveObjectiveDetail({
+      objective_id: objective.objective_id,
+      performance_commentary: commentary || null,
+      corrective_action_summary: correctiveAction || null,
+      forecast_outcome_status: forecast || null,
+      saved_by: currentUser.email,
+    })
+    setSaveResult(res)
+    if (res.ok) router.refresh()
+    return res.ok
+  }
+
   function handleSave() {
     startTransition(async () => {
-      setSaveResult(null)
-      const res = await saveObjectiveDetail({
-        objective_id: objective.objective_id,
-        performance_commentary: commentary || null,
-        corrective_action_summary: correctiveAction || null,
-        forecast_outcome_status: forecast || null,
-        saved_by: currentUser.email,
-      })
-      setSaveResult(res)
-      if (res.ok) router.refresh()
+      await persist()
     })
+  }
+
+  function handleNext() {
+    if (tab === 'details' && !detailsValid) {
+      setSaveResult({ ok: false, error: tc('fillRequired') })
+      return
+    }
+    if (tab === 'details') {
+      startTransition(async () => {
+        const ok = await persist()
+        if (ok) steps.advance()
+      })
+      return
+    }
+    steps.advance()
   }
 
   const perspectiveLabels: Record<string, string> = {
@@ -141,15 +176,6 @@ export function ObjectiveDetailWorkspace({
             <ExternalLink className="h-4 w-4" />
             View strategy
           </Link>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={handleSave}
-            className="btn btn-primary flex h-9 items-center gap-1.5 px-4 text-sm disabled:opacity-50"
-          >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save objective
-          </button>
         </div>
       </div>
 
@@ -166,23 +192,12 @@ export function ObjectiveDetailWorkspace({
         {/* Left panel */}
         <div className="space-y-4">
           {/* Tabs */}
-          <div className="flex gap-4 border-b border-border">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'border-b-2 px-1 py-2 text-xs font-semibold transition-all',
-                  tab === t.id
-                    ? 'border-diriyah-primary text-diriyah-primary'
-                    : 'border-transparent text-text-muted hover:text-text',
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <FormStepRail
+            steps={tabs}
+            currentId={tab}
+            maxReached={steps.maxReached}
+            onSelect={(id) => steps.select(id)}
+          />
 
           {/* Tab: Objective Details */}
           {tab === 'details' && (
@@ -225,8 +240,8 @@ export function ObjectiveDetailWorkspace({
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Performance Commentary
-                  {(forecast === 'At Risk' || forecast === 'Off Track') && (
-                    <span className="ml-1 text-diriyah-red">*Required for Amber/Red</span>
+                  {commentaryRequired && (
+                    <> <RequiredMark /><span className="ml-1 text-diriyah-red">Required for Amber/Red</span></>
                   )}
                 </span>
                 <textarea
@@ -240,8 +255,8 @@ export function ObjectiveDetailWorkspace({
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                   Corrective Action Summary
-                  {forecast === 'At Risk' && (
-                    <span className="ml-1 text-diriyah-red">*Required for At Risk</span>
+                  {actionRequired && (
+                    <> <RequiredMark /><span className="ml-1 text-diriyah-red">Required for At Risk</span></>
                   )}
                 </span>
                 <textarea
@@ -309,6 +324,28 @@ export function ObjectiveDetailWorkspace({
               Dependency mapping — coming soon.
             </div>
           )}
+
+          <FormStepActions
+            isFirst={steps.isFirst}
+            isLast={steps.isLast}
+            onBack={steps.goBack}
+            onNext={handleNext}
+            nextDisabled={tab === 'details' && !detailsValid}
+            nextPending={pending}
+            hideNext={steps.isLast}
+          >
+            {steps.isLast ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={handleSave}
+                className="btn btn-primary flex h-11 items-center gap-1.5 px-5 text-sm disabled:opacity-50"
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save objective
+              </button>
+            ) : null}
+          </FormStepActions>
         </div>
 
         {/* Right panel: Objective Health */}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Loader2, X, Zap, Target } from 'lucide-react'
+import { Plus, Loader2, X, FileText, Target } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { EntryRoute } from '@prisma/client'
 import { useRouter } from '@/src/i18n/navigation'
@@ -10,11 +10,20 @@ import { initiatePortfolioRecord } from '@/src/actions/portfolio-initiation'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { cn } from '@/lib/utils'
 
-/** The two possible entry routes exposed in the modal. */
-type RouteChoice = 'STRATEGIC' | 'ADHOC'
+type RecordIntent = 'chooser' | 'strategy' | 'demand'
+type RouteChoice = 'strategy' | 'demand'
 
-/** Cockpit CTA — shows a modal to choose STRATEGIC or ADHOC entry route (BR-004 / BR-005). */
-export function NewRecordButton({ compact = false }: { compact?: boolean }) {
+export function NewRecordButton({
+  compact = false,
+  intent = 'chooser',
+  preselectStrategyId,
+  label,
+}: {
+  compact?: boolean
+  intent?: RecordIntent
+  preselectStrategyId?: string
+  label?: string
+}) {
   const t = useTranslations('common')
   const router = useRouter()
   const { currentUser } = useAuth()
@@ -22,7 +31,7 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
 
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [selected, setSelected] = useState<RouteChoice>('STRATEGIC')
+  const [selected, setSelected] = useState<RouteChoice>('strategy')
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -49,47 +58,49 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
     setOpen(false)
   }
 
-  function handleContinue() {
+  function createRecord(kind: RouteChoice) {
     startTransition(async () => {
       setError(null)
-      const entryRoute =
-        selected === 'STRATEGIC' ? EntryRoute.STRATEGIC : EntryRoute.ADHOC
-
+      const isStrategy = kind === 'strategy'
       const result = await initiatePortfolioRecord({
-        entry_route: entryRoute,
+        entry_route: isStrategy ? EntryRoute.STRATEGIC : EntryRoute.ADHOC,
         created_by: currentUser.email,
-        title:
-          selected === 'STRATEGIC'
-            ? 'New Strategic Initiative'
-            : 'New Ad-Hoc Demand',
+        title: isStrategy ? 'New Strategy' : 'New Demand',
       })
 
-      if (result.ok) {
-        setOpen(false)
-        if (result.workspace === 'strategy') {
-          router.push(`/strategy/${encodeURIComponent(result.child_id)}`)
-        } else {
-          router.push(
-            `/demand/${encodeURIComponent(result.child_id)}?route=ADHOC`,
-          )
-        }
-        router.refresh()
-      } else {
+      if (!result.ok) {
         setError(result.error)
+        return
       }
+
+      setOpen(false)
+      if (result.workspace === 'strategy') {
+        router.push(`/strategy/${encodeURIComponent(result.child_id)}`)
+      } else {
+        const qs = preselectStrategyId
+          ? `?strategy=${encodeURIComponent(preselectStrategyId)}`
+          : ''
+        router.push(`/demand/${encodeURIComponent(result.child_id)}${qs}`)
+      }
+      router.refresh()
     })
+  }
+
+  function handleTrigger() {
+    setError(null)
+    if (intent === 'strategy' || intent === 'demand') {
+      createRecord(intent)
+      return
+    }
+    setOpen(true)
   }
 
   return (
     <>
-      {/* Trigger button */}
       <button
         type="button"
         data-tour="tour-new-record"
-        onClick={() => {
-          setError(null)
-          setOpen(true)
-        }}
+        onClick={handleTrigger}
         disabled={pending}
         className={cn(
           'btn btn-primary inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap disabled:opacity-60',
@@ -101,11 +112,12 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
         ) : (
           <Plus className="h-3.5 w-3.5" />
         )}
-        {pending ? t('creating') : t('newRecord')}
+        {pending ? t('creating') : (label ?? t('newRecord'))}
       </button>
 
       {mounted &&
         open &&
+        intent === 'chooser' &&
         createPortal(
           <div className="fixed inset-0 z-200 flex items-center justify-center p-4 sm:p-6">
             <button
@@ -121,7 +133,6 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
               aria-labelledby="entry-route-title"
               className="relative z-10 flex max-h-[min(90vh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-xl"
             >
-            {/* Header */}
             <div className="flex shrink-0 items-start justify-between border-b border-border px-6 py-5">
               <div>
                 <h2
@@ -144,15 +155,13 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
               </button>
             </div>
 
-            {/* Route cards */}
             <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto px-6 py-5 sm:grid-cols-2">
-              {/* STRATEGIC */}
               <button
                 type="button"
-                onClick={() => setSelected('STRATEGIC')}
+                onClick={() => setSelected('strategy')}
                 className={cn(
                   'flex flex-col items-start gap-3 rounded-xl border-2 p-4 text-left transition-colors',
-                  selected === 'STRATEGIC'
+                  selected === 'strategy'
                     ? 'border-diriyah-primary bg-diriyah-primary/5'
                     : 'border-border bg-diriyah-bg-alt/50 hover:border-diriyah-primary/40',
                 )}
@@ -160,7 +169,7 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
                 <div
                   className={cn(
                     'flex h-10 w-10 items-center justify-center rounded-lg',
-                    selected === 'STRATEGIC'
+                    selected === 'strategy'
                       ? 'bg-diriyah-primary text-white'
                       : 'bg-diriyah-bg-secondary text-diriyah-primary',
                   )}
@@ -171,9 +180,7 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
                   <p
                     className={cn(
                       'font-semibold',
-                      selected === 'STRATEGIC'
-                        ? 'text-diriyah-primary'
-                        : 'text-text',
+                      selected === 'strategy' ? 'text-diriyah-primary' : 'text-text',
                     )}
                   >
                     {t('strategicRouteTitle')}
@@ -182,20 +189,19 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
                     {t('strategicRouteDesc')}
                   </p>
                 </div>
-                {selected === 'STRATEGIC' && (
+                {selected === 'strategy' && (
                   <span className="rounded-full bg-diriyah-primary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                     Selected
                   </span>
                 )}
               </button>
 
-              {/* ADHOC */}
               <button
                 type="button"
-                onClick={() => setSelected('ADHOC')}
+                onClick={() => setSelected('demand')}
                 className={cn(
                   'flex flex-col items-start gap-3 rounded-xl border-2 p-4 text-left transition-colors',
-                  selected === 'ADHOC'
+                  selected === 'demand'
                     ? 'border-diriyah-amber bg-diriyah-amber/5'
                     : 'border-border bg-diriyah-bg-alt/50 hover:border-diriyah-amber/40',
                 )}
@@ -203,18 +209,18 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
                 <div
                   className={cn(
                     'flex h-10 w-10 items-center justify-center rounded-lg',
-                    selected === 'ADHOC'
+                    selected === 'demand'
                       ? 'bg-diriyah-amber text-white'
                       : 'bg-diriyah-bg-secondary text-diriyah-amber',
                   )}
                 >
-                  <Zap className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                 </div>
                 <div>
                   <p
                     className={cn(
                       'font-semibold',
-                      selected === 'ADHOC' ? 'text-diriyah-amber' : 'text-text',
+                      selected === 'demand' ? 'text-diriyah-amber' : 'text-text',
                     )}
                   >
                     {t('adhocRouteTitle')}
@@ -223,7 +229,7 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
                     {t('adhocRouteDesc')}
                   </p>
                 </div>
-                {selected === 'ADHOC' && (
+                {selected === 'demand' && (
                   <span className="rounded-full bg-diriyah-amber px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                     Selected
                   </span>
@@ -237,7 +243,6 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
               </p>
             ) : null}
 
-            {/* Footer */}
             <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
               <button
                 type="button"
@@ -249,11 +254,11 @@ export function NewRecordButton({ compact = false }: { compact?: boolean }) {
               </button>
               <button
                 type="button"
-                onClick={handleContinue}
+                onClick={() => createRecord(selected)}
                 disabled={pending}
                 className={cn(
                   'btn h-10 px-5 text-sm font-semibold text-white disabled:opacity-60',
-                  selected === 'ADHOC'
+                  selected === 'demand'
                     ? 'bg-diriyah-amber hover:opacity-90'
                     : 'btn-primary',
                 )}

@@ -9,7 +9,12 @@ import { useAuth } from '@/src/providers/AuthProvider'
 import { isPmoReadyStage } from '@/lib/atlas/procurement'
 import { DefinitionList, OfficialTag, RecordNotice } from '@/components/atlas/records'
 import { sentenceCaseLabel, stageTagTone } from '@/lib/atlas/record-label'
-import { cn } from '@/lib/utils'
+import {
+  FormStepActions,
+  FormStepRail,
+  RequiredMark,
+  useFormSteps,
+} from '@/components/atlas/forms/FormStepper'
 
 type RaidcRow = {
   id: string
@@ -67,10 +72,12 @@ export function PmoRegistrationGate({
   derivedReadiness,
 }: Props) {
   const t = useTranslations('pmo')
+  const tc = useTranslations('common')
   const { currentUser } = useAuth()
   const ready = isPmoReadyStage(stage)
   const unlocked = ready && !alreadyRegistered
-  const [activeTab, setActiveTab] = useState<Tab>('identity')
+  const steps = useFormSteps(TAB_IDS, 'identity', !unlocked)
+  const activeTab = steps.currentId as Tab
   const [form, setForm] = useState({
     project_name: itemTitle ? `${itemTitle} — Project` : '',
     project_type: 'Delivery',
@@ -162,6 +169,23 @@ export function PmoRegistrationGate({
   function patchPaymentRow(id: string, field: keyof Omit<PaymentRow, 'id'>, value: string) {
     if (!unlocked) return
     setPaymentRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
+  }
+
+  function handleNext() {
+    if (!unlocked) {
+      steps.advance()
+      return
+    }
+    if (activeTab === 'identity' && !form.project_name.trim()) {
+      setError(tc('fillRequired'))
+      return
+    }
+    if (activeTab === 'people' && !form.project_manager_id.trim()) {
+      setError(tc('fillRequired'))
+      return
+    }
+    setError(null)
+    steps.advance()
   }
 
   function activate() {
@@ -266,26 +290,29 @@ export function PmoRegistrationGate({
         </RecordNotice>
       ) : null}
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {TAB_IDS.map((tabId) => {
-          const labelKey = tabId === 'identity' ? 'identityTab' : tabId === 'people' ? 'peopleTab' : tabId === 'scope' ? 'scopeTab' : tabId === 'finance' ? 'financeTab' : tabId === 'governance' ? 'governanceTab' : tabId === 'raidc' ? 'raidcTab' : 'paymentsTab'
-          return (
-            <button
-              key={tabId}
-              type="button"
-              onClick={() => setActiveTab(tabId)}
-              className={cn(
-                'shrink-0 border-b-2 px-4 py-2 text-sm font-medium transition',
-                activeTab === tabId
-                  ? 'border-diriyah-primary text-diriyah-primary'
-                  : 'border-transparent text-text-muted hover:text-text',
-              )}
-            >
-              {t(labelKey)}
-            </button>
-          )
-        })}
-      </div>
+      <FormStepRail
+        steps={TAB_IDS.map((tabId) => ({
+          id: tabId,
+          label: t(
+            tabId === 'identity'
+              ? 'identityTab'
+              : tabId === 'people'
+                ? 'peopleTab'
+                : tabId === 'scope'
+                  ? 'scopeTab'
+                  : tabId === 'finance'
+                    ? 'financeTab'
+                    : tabId === 'governance'
+                      ? 'governanceTab'
+                      : tabId === 'raidc'
+                        ? 'raidcTab'
+                        : 'paymentsTab',
+          ),
+        }))}
+        currentId={activeTab}
+        maxReached={steps.maxReached}
+        onSelect={(id) => steps.select(id)}
+      />
 
       <section className="overflow-hidden rounded-md border border-border bg-white p-0">
         <div className="border-b border-border bg-diriyah-bg-alt/80 px-6 py-4">
@@ -296,7 +323,9 @@ export function PmoRegistrationGate({
         {activeTab === 'identity' && (
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5 md:col-span-2">
-              <span className="text-sm font-medium text-text">{t('projectName')}</span>
+              <span className="text-sm font-medium text-text">
+                {t('projectName')} <RequiredMark />
+              </span>
               <input className="input-base" disabled={!unlocked} value={form.project_name} onChange={patch('project_name')} />
             </label>
             <label className="block space-y-1.5">
@@ -347,7 +376,9 @@ export function PmoRegistrationGate({
         {activeTab === 'people' && (
           <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-text">{t('projectManager')}</span>
+              <span className="text-sm font-medium text-text">
+                {t('projectManager')} <RequiredMark />
+              </span>
               <input className="input-base" disabled={!unlocked} value={form.project_manager_id} onChange={patch('project_manager_id')} placeholder="user@diriyah.sa" />
             </label>
             <label className="block space-y-1.5">
@@ -702,26 +733,39 @@ export function PmoRegistrationGate({
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm">
-            {error ? <p className="text-diriyah-red">{error}</p> : null}
-          </div>
-          <button
-            type="button"
-            className="btn btn-primary h-11 px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!unlocked || pending || !form.project_name || !form.project_manager_id || !checksReady}
-            onClick={activate}
-            title={!ready ? 'Locked until Acceptance/Completed' : !checksReady ? 'BR-035: complete the checklist' : undefined}
-          >
-            {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : !ready ? (
-              <Lock className="h-4 w-4" />
-            ) : (
-              <Unlock className="h-4 w-4" />
-            )}
-            {pending ? t('activating') : t('activateProject')}
-          </button>
+        {error ? <p className="px-6 text-sm text-diriyah-red">{error}</p> : null}
+        <div className="px-6 pb-4">
+        <FormStepActions
+          isFirst={steps.isFirst}
+          isLast={steps.isLast}
+          onBack={steps.goBack}
+          onNext={handleNext}
+          nextDisabled={
+            unlocked &&
+            ((activeTab === 'identity' && !form.project_name.trim()) ||
+              (activeTab === 'people' && !form.project_manager_id.trim()))
+          }
+          hideNext={steps.isLast}
+        >
+          {steps.isLast ? (
+            <button
+              type="button"
+              className="btn btn-primary h-11 px-6 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!unlocked || pending || !form.project_name || !form.project_manager_id || !checksReady}
+              onClick={activate}
+              title={!ready ? 'Locked until Acceptance/Completed' : !checksReady ? 'BR-035: complete the checklist' : undefined}
+            >
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : !ready ? (
+                <Lock className="h-4 w-4" />
+              ) : (
+                <Unlock className="h-4 w-4" />
+              )}
+              {pending ? t('activating') : t('activateProject')}
+            </button>
+          ) : null}
+        </FormStepActions>
         </div>
       </section>
 

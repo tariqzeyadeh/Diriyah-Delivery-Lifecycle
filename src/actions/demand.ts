@@ -1,8 +1,8 @@
 'use server'
 
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { randomInt } from 'crypto'
-import { Prisma, VersionStatus } from '@prisma/client'
+import { EntryRoute, Prisma, VersionStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 /** Coerce a nullable JSON value to Prisma.JsonNull so Json? fields accept it. */
@@ -166,6 +166,10 @@ function generateId(prefix: string): string {
   return `${prefix}-${new Date().getFullYear()}-${randomInt(1000, 10000)}`
 }
 
+function generateMasterTraceId(): string {
+  return `TECH-${new Date().getFullYear()}-${randomInt(1000, 10000)}`
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // saveDemand
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,11 +194,100 @@ export async function saveDemand(
       if (!existing) throw new Error(`Demand not found: ${demand_id}`)
       if (existing.is_locked) throw new Error('Demand is locked — submit a revision request.')
 
+      const strategyId = payload.strategy_id?.trim() || null
+      const previousTraceId = existing.master_trace_id
+      let targetTraceId = previousTraceId
+      let entryRoute = strategyId ? EntryRoute.STRATEGIC : EntryRoute.ADHOC
+
+      if (strategyId) {
+        const strategy = await tx.strategy.findUnique({
+          where: { strategy_id: strategyId },
+          select: { master_trace_id: true, record_status: true },
+        })
+        if (!strategy) throw new Error(`Selected strategy was not found: ${strategyId}`)
+        if (strategy.record_status !== 'APPROVED' && strategy.record_status !== 'APPROVED_COND') {
+          throw new Error('Linked strategy must be approved at G-S1 before it can be selected.')
+        }
+        targetTraceId = strategy.master_trace_id
+        entryRoute = EntryRoute.STRATEGIC
+      } else {
+        const previousSpine = await tx.masterTrace.findUnique({
+          where: { master_trace_id: previousTraceId },
+          select: { strategies: { select: { strategy_id: true }, take: 1 } },
+        })
+        const onStrategySpine = (previousSpine?.strategies.length ?? 0) > 0
+        if (onStrategySpine) {
+          let created = generateMasterTraceId()
+          for (let attempt = 0; attempt < 8; attempt++) {
+            const clash = await tx.masterTrace.findUnique({
+              where: { master_trace_id: created },
+              select: { master_trace_id: true },
+            })
+            if (!clash) break
+            created = generateMasterTraceId()
+          }
+          await tx.masterTrace.create({
+            data: {
+              master_trace_id: created,
+              entry_route: EntryRoute.ADHOC,
+              created_by: modified_by,
+            },
+          })
+          targetTraceId = created
+        } else {
+          await tx.masterTrace.update({
+            where: { master_trace_id: previousTraceId },
+            data: { entry_route: EntryRoute.ADHOC },
+          })
+        }
+        entryRoute = EntryRoute.ADHOC
+      }
+
+      if (targetTraceId !== previousTraceId) {
+        await tx.demandOption.updateMany({
+          where: { demand_id },
+          data: { master_trace_id: targetTraceId, entry_route: entryRoute },
+        })
+        await tx.demandBenefit.updateMany({
+          where: { demand_id },
+          data: { master_trace_id: targetTraceId, entry_route: entryRoute },
+        })
+        await tx.demandRaidc.updateMany({
+          where: { demand_id },
+          data: { master_trace_id: targetTraceId, entry_route: entryRoute },
+        })
+        await tx.budgetSubmission.updateMany({
+          where: { parent_record_id: demand_id },
+          data: {
+            master_trace_id: targetTraceId,
+            entry_route: entryRoute,
+            strategy_id: strategyId,
+          },
+        })
+
+        const leftover = await tx.demand.count({
+          where: { master_trace_id: previousTraceId, demand_id: { not: demand_id } },
+        })
+        const leftoverStrategy = await tx.strategy.count({ where: { master_trace_id: previousTraceId } })
+        const leftoverBudget = await tx.budgetSubmission.count({
+          where: { master_trace_id: previousTraceId },
+        })
+        if (leftover === 0 && leftoverStrategy === 0 && leftoverBudget === 0) {
+          await tx.masterTrace.update({
+            where: { master_trace_id: previousTraceId },
+            data: { is_active: false },
+          })
+        }
+      }
+
       // Update Demand core fields
       await tx.demand.update({
         where: { demand_id },
         data: {
           demand_title: payload.demand_title.slice(0, 255),
+          master_trace_id: targetTraceId,
+          parent_record_id: strategyId,
+          entry_route: entryRoute,
           demand_type: payload.demand_type ?? null,
           demand_category: payload.demand_category ?? null,
           demand_subcategory: payload.demand_subcategory ?? null,
@@ -204,9 +297,9 @@ export async function saveDemand(
           executive_sponsor_user_id: payload.executive_sponsor_user_id ?? null,
           strategic_classification: payload.strategic_classification ?? null,
           origin_channel: payload.origin_channel ?? null,
-          strategy_id: payload.strategy_id ?? null,
-          objective_ids: j(payload.objective_ids),
-          kpi_ids: j(payload.kpi_ids),
+          strategy_id: strategyId,
+          objective_ids: j(strategyId ? payload.objective_ids : []),
+          kpi_ids: j(strategyId ? payload.kpi_ids : []),
           strategic_contribution_statement: payload.strategic_contribution_statement ?? null,
           ad_hoc_justification: payload.ad_hoc_justification ?? null,
           mandatory_driver: payload.mandatory_driver ?? null,
@@ -287,9 +380,9 @@ export async function saveDemand(
               option_weighted_score: opt.option_weighted_score ?? null,
               recommendation_status: opt.recommendation_status ?? null,
               is_do_nothing: opt.is_do_nothing ?? false,
-              master_trace_id: existing.master_trace_id,
+              master_trace_id: targetTraceId,
               entity_type: 'DEMAND_OPTION',
-              entry_route: existing.entry_route,
+              entry_route: entryRoute,
               created_by: modified_by,
             },
             update: {
@@ -325,9 +418,9 @@ export async function saveDemand(
               benefit_realization_start: ben.benefit_realization_start ? new Date(ben.benefit_realization_start) : null,
               benefit_owner_user_id: ben.benefit_owner_user_id ?? null,
               benefit_kpi_id: ben.benefit_kpi_id ?? null,
-              master_trace_id: existing.master_trace_id,
+              master_trace_id: targetTraceId,
               entity_type: 'DEMAND_BENEFIT',
-              entry_route: existing.entry_route,
+              entry_route: entryRoute,
               created_by: modified_by,
             },
             update: {
@@ -363,9 +456,9 @@ export async function saveDemand(
               response: item.response ?? null,
               status: item.status ?? null,
               due_date: item.due_date ? new Date(item.due_date) : null,
-              master_trace_id: existing.master_trace_id,
+              master_trace_id: targetTraceId,
               entity_type: 'DEMAND_RAIDC',
-              entry_route: existing.entry_route,
+              entry_route: entryRoute,
               created_by: modified_by,
             },
             update: {
@@ -418,9 +511,9 @@ export async function saveDemand(
  * Submits a Demand Business Case for validation.
  *
  * Enforces:
- *   BR-005 — ADHOC demands require ad_hoc_justification (≥20 chars)
- *   BR-016 — all mandatory fields must be complete (basic check)
- *   BR-017 — at least one do-nothing option must exist among options
+ *   BR-016 — title and problem / opportunity statement
+ *   BR-017 — at least one do-nothing option if options exist
+ * Creates a BudgetSubmission draft on first submit (same Master Trace).
  */
 export async function submitDemand(
   payload: SubmitDemandPayload,
@@ -464,16 +557,7 @@ export async function submitDemand(
         )
       }
 
-      // BR-005: ADHOC route requires justification
-      const isAdHoc = demand.master_trace.entry_route === 'ADHOC' || demand.entry_route === 'ADHOC'
-      if (isAdHoc && (!demand.ad_hoc_justification || demand.ad_hoc_justification.trim().length < 20)) {
-        throw Object.assign(
-          new Error(
-            'BR-005: Ad-hoc justification is mandatory for non-strategic requests (minimum 20 characters).',
-          ),
-          { code: 'BR-005' },
-        )
-      }
+      // Standalone (no strategy) is a valid ad-hoc demand. Justification is optional.
 
       // G-17: the Demand workspace *is* the business case (Business Case tab).
       // There is no separate BUSINESS_CASE file upload.
@@ -539,10 +623,38 @@ export async function submitDemand(
           )
         : []
 
+      const existingBudget = await tx.budgetSubmission.findFirst({
+        where: { parent_record_id: demand.demand_id },
+        select: { budget_submission_id: true },
+      })
+      if (!existingBudget) {
+        await tx.budgetSubmission.create({
+          data: {
+            budget_submission_id: generateId('BUD'),
+            master_trace_id: demand.master_trace_id,
+            strategy_id: demand.strategy_id,
+            entity_type: 'BUDGET_SUBMISSION',
+            entry_route: demand.entry_route,
+            record_status: 'DRAFT',
+            parent_record_id: demand.demand_id,
+            budget_cycle: 'Annual Plan',
+            budget_scenario: 'Requested',
+            base_currency: 'SAR',
+            is_locked: false,
+            created_by: submitted_by,
+            version_number: 1,
+          },
+        })
+      }
+
       return { demand_id, review_gates: opened }
     })
 
     revalidateTag(CACHE_TAGS.PORTFOLIO_METRICS, 'max')
+    for (const locale of ['en', 'ar'] as const) {
+      revalidatePath(`/${locale}/budget`)
+      revalidatePath(`/${locale}/demand`)
+    }
     auditLog({
       action_type: 'SUBMIT_DEMAND',
       entity_type: 'DEMAND',

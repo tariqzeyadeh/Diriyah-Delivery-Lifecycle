@@ -55,8 +55,6 @@ export type ApproveStrategyGateResult =
       ok: true
       strategy_id: string
       master_trace_id: string
-      demand_id: string
-      budget_submission_id: string
     }
   | {
       ok: false
@@ -124,9 +122,9 @@ function versionHash(payload: unknown): string {
 }
 
 /**
- * CTO Gate 1 — Strategy Approval handoff.
- * Approves Strategy, then auto-instantiates Demand + BudgetSubmission (DRAFT)
- * on the same MasterTrace for Business / Commercial teams.
+ * CTO Gate 1 — Strategy Approval.
+ * Approves and locks the Strategy. Demand and Budget are created later by the
+ * business owner (New Record → Demand) and on demand submit, respectively.
  */
 export async function approveStrategyGate(
   payload: ApproveStrategyGatePayload,
@@ -165,8 +163,6 @@ export async function approveStrategyGate(
       if (!master) {
         throw new Error(`MasterTrace not found: ${master_trace_id}`)
       }
-
-      const entry_route = master.entry_route
 
       // G-03/G-02: support APPROVED_COND gate decision
       const gateDecision = payload.decision ?? 'APPROVED'
@@ -227,47 +223,9 @@ export async function approveStrategyGate(
         },
       })
 
-      const demand_id = generateId('DEM')
-      await tx.demand.create({
-        data: {
-          demand_id,
-          master_trace_id,
-          strategy_id,
-          demand_title: `${strategy.strategy_title} — Demand Case`,
-          entity_type: 'DEMAND',
-          entry_route,
-          record_status: 'DRAFT',
-          parent_record_id: strategy_id,
-          is_locked: false,
-          created_by,
-          version_number: 1,
-        },
-      })
-
-      const budget_submission_id = generateId('BUD')
-      await tx.budgetSubmission.create({
-        data: {
-          budget_submission_id,
-          master_trace_id,
-          strategy_id,
-          entity_type: 'BUDGET_SUBMISSION',
-          entry_route,
-          record_status: 'DRAFT',
-          parent_record_id: strategy_id,
-          budget_cycle: 'Annual Plan',
-          budget_scenario: 'Requested',
-          base_currency: 'SAR',
-          is_locked: false,
-          created_by,
-          version_number: 1,
-        },
-      })
-
       return {
         strategy_id,
         master_trace_id,
-        demand_id,
-        budget_submission_id,
       }
     })
 
@@ -279,8 +237,6 @@ export async function approveStrategyGate(
       entity_type: 'STRATEGY',
       entity_id: strategy_id,
       outcome: 'success',
-      demand_id: result.demand_id,
-      budget_submission_id: result.budget_submission_id,
     })
 
     return { ok: true, ...result }
@@ -1448,8 +1404,10 @@ export async function getDemandWorkspace(demandId: string) {
 
   const strategies = await prisma.strategy.findMany({
     where: {
-      master_trace_id: demand.master_trace_id,
-      record_status: 'APPROVED',
+      OR: [
+        { record_status: { in: ['APPROVED', 'APPROVED_COND'] } },
+        ...(demand.strategy_id ? [{ strategy_id: demand.strategy_id }] : []),
+      ],
     },
     select: {
       strategy_id: true,
