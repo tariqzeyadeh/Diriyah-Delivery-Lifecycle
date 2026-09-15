@@ -28,13 +28,6 @@ const TOUR_STEPS: Step[] = [
       'Pending approvals by SLA posture: Within SLA, Due soon, and Overdue. Use this to keep CTO and PMO gates from becoming the bottleneck.',
     placement: 'left',
   },
-  {
-    target: '[data-tour="tour-uat-feedback"]',
-    title: 'UAT Feedback',
-    content:
-      'Pilot users can report bugs, UI issues, or feature requests here. Diriyah captures your page path and Master Trace ID automatically.',
-    placement: 'left',
-  },
 ]
 
 /**
