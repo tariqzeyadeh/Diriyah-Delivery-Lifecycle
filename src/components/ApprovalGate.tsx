@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { useTranslations } from 'next-intl'
+import { useRouter } from '@/src/i18n/navigation'
 import {
   createAttachmentRecord,
   createCommentRecord,
@@ -30,6 +31,7 @@ export type ApprovalGateProps = {
   approverUserId?: string
   title?: string
   onDecisionComplete?: (decision: 'APPROVED' | 'RETURNED') => void
+  alreadyDecided?: boolean
 }
 
 type LocalAttachment = {
@@ -64,8 +66,10 @@ export function ApprovalGate({
   approverUserId: _approverUserId = 'mohammed.alnuaimi',
   title = 'Evidence & Approval Center',
   onDecisionComplete,
+  alreadyDecided = false,
 }: ApprovalGateProps) {
   const t = useTranslations('common')
+  const router = useRouter()
   const { currentUser, canDecideGate, awaitingRoleForGate } = useAuth()
   const canDecide = canDecideGate(gateCode)
   const awaitingRole = awaitingRoleForGate(gateCode)
@@ -81,6 +85,11 @@ export function ApprovalGate({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+  const [localClosed, setLocalClosed] = useState(alreadyDecided)
+
+  useEffect(() => {
+    if (alreadyDecided) setLocalClosed(true)
+  }, [alreadyDecided])
 
   const refreshHistory = useCallback(async () => {
     const rows = await listGateApprovals(entityId, masterTraceId)
@@ -169,7 +178,17 @@ export function ApprovalGate({
     })
   }
 
+  const gateClosed =
+    alreadyDecided ||
+    localClosed ||
+    history.some(
+      (h) =>
+        h.gate_code === gateCode &&
+        (h.decision === 'APPROVED' || h.decision === 'APPROVED_COND'),
+    )
+
   function approve() {
+    if (gateClosed) return
     startTransition(async () => {
       setError(null)
       const result = await submitGateDecision({
@@ -185,13 +204,16 @@ export function ApprovalGate({
         setError(result.error)
         return
       }
+      setLocalClosed(true)
       setMessage('Approved — ApprovalTransaction recorded (BR-008)')
       await refreshHistory()
       onDecisionComplete?.('APPROVED')
+      router.refresh()
     })
   }
 
   function submitReturn() {
+    if (gateClosed) return
     if (!returnComments.trim()) {
       setError('Decision comments are mandatory when returning for revision.')
       return
@@ -389,7 +411,12 @@ export function ApprovalGate({
       )}
 
       <div className="flex flex-col gap-3 border-t border-border bg-diriyah-bg-alt/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        {!canDecide ? (
+        {gateClosed ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-diriyah-green/40 bg-diriyah-green/10 px-3 py-1.5 text-sm font-semibold text-diriyah-green">
+            <CheckCircle2 className="h-4 w-4" />
+            Already approved at this gate
+          </div>
+        ) : !canDecide ? (
           <div className="inline-flex items-center gap-2 rounded-full border border-diriyah-amber/40 bg-diriyah-amber/10 px-3 py-1.5 text-sm font-semibold text-diriyah-primary">
             <Lock className="h-4 w-4" />
             Awaiting {awaitingRole} Approval
@@ -399,7 +426,7 @@ export function ApprovalGate({
             Acting as {currentUser.name} · {currentUser.role}
           </p>
         )}
-        {canDecide ? (
+        {canDecide && !gateClosed ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"

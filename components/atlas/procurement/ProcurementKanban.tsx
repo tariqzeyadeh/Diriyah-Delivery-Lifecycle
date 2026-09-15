@@ -2,11 +2,12 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link } from '@/src/i18n/navigation'
+import { Link, useRouter } from '@/src/i18n/navigation'
 import { recordProcurementStageMove, updateActualCommitment } from '@/src/actions/gates'
 import {
   PROCUREMENT_BOARD_COLUMNS,
   isPmoReadyStage,
+  isValidProcurementTransition,
   normalizeProcurementStage,
   type ProcurementBoardColumn,
 } from '@/lib/atlas/procurement'
@@ -119,19 +120,22 @@ type Props = {
   initialItems: KanbanItem[]
 }
 
+function hydrateItems(rows: KanbanItem[]): KanbanItem[] {
+  return rows.map((i) => ({
+    ...i,
+    procurement_stage: normalizeProcurementStage(i.procurement_stage),
+  }))
+}
+
 export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialItems }: Props) {
   const t = useTranslations('procurement')
   const tc = useTranslations('common')
+  const router = useRouter()
   const columns = PROCUREMENT_BOARD_COLUMNS.map((key) => ({
     key,
     label: t(`columns.${key}`),
   }))
-  const [items, setItems] = useState(
-    initialItems.map((i) => ({
-      ...i,
-      procurement_stage: normalizeProcurementStage(i.procurement_stage),
-    })),
-  )
+  const [items, setItems] = useState(() => hydrateItems(initialItems))
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -153,9 +157,10 @@ export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialIt
     return map
   }, [items])
 
-  function onDrop(column: ProcurementBoardColumn) {
-    if (!draggingId) return
-    const item = items.find((i) => i.procurement_item_id === draggingId)
+  function onDrop(column: ProcurementBoardColumn, droppedId?: string) {
+    const id = droppedId || draggingId
+    if (!id) return
+    const item = items.find((i) => i.procurement_item_id === id)
     if (!item) return
     const previous = normalizeProcurementStage(item.procurement_stage)
     if (previous === column) {
@@ -163,9 +168,15 @@ export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialIt
       return
     }
 
+    if (!isValidProcurementTransition(previous, column)) {
+      setError(t('oneColumnAtATime'))
+      setDraggingId(null)
+      return
+    }
+
     setItems((rows) =>
       rows.map((r) =>
-        r.procurement_item_id === draggingId ? { ...r, procurement_stage: column } : r,
+        r.procurement_item_id === id ? { ...r, procurement_stage: column } : r,
       ),
     )
     setDraggingId(null)
@@ -187,7 +198,9 @@ export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialIt
           ),
         )
         setError(result.error)
+        return
       }
+      router.refresh()
     })
   }
 
@@ -227,7 +240,11 @@ export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialIt
             key={col.key}
             className="flex min-h-[420px] w-64 shrink-0 flex-col rounded-md border border-border bg-diriyah-bg-alt/50"
             onDragOver={(e) => e.preventDefault()}
-            onDrop={() => onDrop(col.key)}
+            onDrop={(e) => {
+              e.preventDefault()
+              const droppedId = e.dataTransfer.getData('text/plain') || undefined
+              onDrop(col.key, droppedId)
+            }}
           >
             <div className="flex items-center justify-between border-b border-border bg-white px-3 py-2.5">
               <h2 className="text-sm font-semibold text-text">{col.label}</h2>
@@ -238,7 +255,11 @@ export function ProcurementKanban({ budgetSubmissionId, masterTraceId, initialIt
                 <article
                   key={item.procurement_item_id}
                   draggable
-                  onDragStart={() => setDraggingId(item.procurement_item_id)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', item.procurement_item_id)
+                    e.dataTransfer.effectAllowed = 'move'
+                    setDraggingId(item.procurement_item_id)
+                  }}
                   onDragEnd={() => setDraggingId(null)}
                   className={cn(
                     'cursor-grab rounded-md border border-border bg-white p-3 active:cursor-grabbing',

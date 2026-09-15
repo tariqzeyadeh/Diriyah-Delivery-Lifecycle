@@ -7,32 +7,14 @@ type Props = {
   params: Promise<{ id: string }>
 }
 
-const DEMO_ITEMS = [
-  {
-    procurement_item_id: 'PIT-2027-0001',
-    procurement_item_title: 'Diriyah Platform Licenses',
-    procurement_stage: 'PLANNED',
-    planned_value_sar: 1200000,
-    approved_budget_sar: 1200000,
-    vendor_id: null,
-  },
-  {
-    procurement_item_id: 'PIT-2027-0002',
-    procurement_item_title: 'Implementation & Integration Services',
-    procurement_stage: 'COMPLETED',
-    planned_value_sar: 850000,
-    approved_budget_sar: 850000,
-    vendor_id: 'VND-22',
-  },
-]
-
 export default async function ProcurementBoardPage({ params }: Props) {
   const { id } = await params
   const budgetSubmissionId = decodeURIComponent(id)
   const board = await getProcurementBoard(budgetSubmissionId)
 
   const masterTraceId = board?.submission.master_trace_id ?? `TECH-${new Date().getFullYear()}-DEMO`
-  const items = board?.items?.length ? board.items : DEMO_ITEMS
+  const items = board?.items ?? []
+  const gateAlreadyApproved = Boolean(board?.submission.g_b1_already_approved)
 
   return (
     <div className="space-y-8">
@@ -57,6 +39,7 @@ export default async function ProcurementBoardPage({ params }: Props) {
         gateCode="G-B1"
         title="Budget / Procurement Gate — Evidence & Approval"
         approverUserId="mohammed.alnuaimi"
+        alreadyDecided={gateAlreadyApproved}
       />
     </div>
   )

@@ -8,7 +8,7 @@ import {
   VirusScanStatus,
   type CommentType,
 } from '@prisma/client'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { CACHE_TAGS } from '@/src/lib/cache-tags'
 import { auditLog, captureException } from '@/src/lib/logger'
@@ -26,6 +26,17 @@ function revalidatePortfolioDashboards() {
   // Next.js 16: second arg is the stale-while-revalidate profile
   revalidateTag(CACHE_TAGS.PORTFOLIO_METRICS, 'max')
   revalidateTag(CACHE_TAGS.STRATEGY_ROLLUP, 'max')
+}
+
+function revalidateProcurementPages(budgetSubmissionId?: string | null) {
+  for (const locale of ['en', 'ar'] as const) {
+    revalidatePath(`/${locale}/procurement`)
+    if (!budgetSubmissionId) continue
+    const id = encodeURIComponent(budgetSubmissionId)
+    revalidatePath(`/${locale}/procurement/${id}`)
+    revalidatePath(`/${locale}/procurement/${id}/board`)
+    revalidatePath(`/${locale}/procurement/${id}/plan`)
+  }
 }
 
 export type ApproveStrategyGatePayload = {
@@ -629,14 +640,12 @@ export async function recordProcurementStageMove(payload: {
   try {
     const item = await prisma.procurementItem.findUnique({
       where: { procurement_item_id },
+      include: { plan: { select: { budget_submission_id: true } } },
     })
     if (!item) {
-      // Demo board cards (not yet persisted) — UI move succeeds without ledger row
       return {
-        ok: true as const,
-        update_id: `DEMO-UPD-${Date.now()}`,
-        new_stage,
-        demo: true as const,
+        ok: false as const,
+        error: 'Procurement item was not found. Refresh the board and try again.',
       }
     }
 
@@ -719,6 +728,9 @@ export async function recordProcurementStageMove(payload: {
       previous_stage,
       new_stage,
     })
+
+    revalidatePortfolioDashboards()
+    revalidateProcurementPages(item.plan?.budget_submission_id)
 
     return { ok: true as const, update_id, new_stage }
   } catch (err) {
@@ -829,6 +841,15 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
 
   if (!submission) return null
 
+  const gb1Approval = await prisma.approvalTransaction.findFirst({
+    where: {
+      entity_id: budgetSubmissionId,
+      gate_code: 'G-B1',
+      decision: { in: [DecisionEnum.APPROVED, DecisionEnum.APPROVED_COND] },
+    },
+    select: { approval_id: true },
+  })
+
   const byId = new Map<
     string,
     {
@@ -883,6 +904,8 @@ export async function getProcurementBoard(budgetSubmissionId: string) {
       budget_submission_id: submission.budget_submission_id,
       master_trace_id: submission.master_trace_id,
       record_status: submission.record_status,
+      g_b1_already_approved:
+        submission.record_status === 'APPROVED' || Boolean(gb1Approval),
     },
     items: Array.from(byId.values()).sort((a, b) => {
       const byDate = b.created_at.localeCompare(a.created_at)
@@ -1262,6 +1285,22 @@ export async function submitGateDecision(payload: {
   }
 
   try {
+    const existing = await prisma.approvalTransaction.findFirst({
+      where: {
+        entity_type: payload.entity_type,
+        entity_id: payload.entity_id,
+        gate_code: payload.gate_code,
+        decision: { in: [DecisionEnum.APPROVED, DecisionEnum.APPROVED_COND] },
+      },
+      select: { approval_id: true },
+    })
+    if (existing && payload.decision === 'APPROVED') {
+      return {
+        ok: false as const,
+        error: 'This gate is already approved. Approve cannot be submitted again.',
+      }
+    }
+
     const now = new Date()
     const approval_id = generateId('APR')
     const version_number = payload.version_number ?? 1
@@ -1301,6 +1340,9 @@ export async function submitGateDecision(payload: {
     })
 
     revalidatePortfolioDashboards()
+    if (payload.entity_type === 'BUDGET_SUBMISSION') {
+      revalidateProcurementPages(payload.entity_id)
+    }
     auditLog({
       action_type: 'SUBMIT_GATE_DECISION',
       master_trace_id: payload.master_trace_id,

@@ -171,7 +171,7 @@
   "procurement": {
     "execution": "Procurement Execution",
     "kanbanTitle": "Kanban Board",
-    "kanbanDesc": "Drag cards across stages. Each move writes a procurement status ledger row.",
+    "kanbanDesc": "Drag cards one column at a time. Each move is saved to the procurement status ledger.",
     "budgetId": "Budget",
     "openPmoHandoff": "Open PMO handoff",
     "dropHere": "Drop cards here",
@@ -213,6 +213,7 @@
     "planned": "Planned",
     "committed": "Committed",
     "moveFailed": "Move could not be saved",
+    "oneColumnAtATime": "Cards can only move one column forward or back (or to Cancel). Skipping columns is not saved.",
     "invalidSar": "Enter a valid SAR amount"
   },
   "admin": {
