@@ -21,6 +21,21 @@
     "back": "السابق",
     "stepOf": "الخطوة {current} من {total}",
     "fillRequired": "أكمل الحقول الإلزامية في هذه الخطوة قبل المتابعة.",
+    "delete": "حذف",
+    "deleting": "جاري الحذف…",
+    "confirmDelete": "تأكيد الحذف",
+    "deleteConfirm": "حذف هذا السجل؟ سيخرج من السجل.",
+    "deleteBlocked": {
+      "not_draft": "يمكن حذف المسودات فقط.",
+      "locked": "هذا السجل مقفل.",
+      "linked_strategy": "مرتبط باستراتيجية.",
+      "linked_demand": "مرتبط بطلب.",
+      "linked_budget": "توجد ميزانية لهذا السجل.",
+      "linked_procurement": "بدأت المشتريات.",
+      "linked_project": "يوجد مشروع مسجّل.",
+      "not_planned": "تجاوزت المشتريات مرحلة التخطيط.",
+      "registered": "لا يمكن حذف المشاريع المسجّلة."
+    },
     "submit": "إرسال",
     "explore": "استكشاف",
     "open": "فتح",
@@ -864,6 +879,7 @@
     "strategic": "استراتيجي",
     "adhoc": "عارض",
     "registerCaption": "سجل الطلب",
+    "tableActions": "الإجراءات",
     "reviewsLink": "المراجعات المشروطة",
     "validateLink": "التحقق التجاري"
   },
@@ -885,7 +901,8 @@
     "registerCaption": "تقديمات الميزانية",
     "tableSubmission": "التقديم",
     "openBoard": "اللوحة",
-    "openPlan": "الخطة"
+    "openPlan": "الخطة",
+    "tableActions": "الإجراءات"
   },
   "budgetCreate": {
     "pageTitle": "إنشاء ميزانية",
@@ -910,7 +927,8 @@
     "noRecords": "لا توجد بنود مشتريات بعد.",
     "openBoard": "فتح اللوحة",
     "registerCaption": "بنود المشتريات",
-    "activated": "تم تفعيل المشروع"
+    "activated": "تم تفعيل المشروع",
+    "tableActions": "الإجراءات"
   },
   "pmoIndex": {
     "pageTitle": "تسليم مكتب إدارة المشاريع",
@@ -943,7 +961,8 @@
     "statusActive": "نشط",
     "metricRegistered": "مسجّل",
     "metricPendingPmo": "بانتظار مكتب إدارة المشاريع",
-    "metricInDelivery": "قيد التسليم"
+    "metricInDelivery": "قيد التسليم",
+    "tableActions": "الإجراءات"
   },
   "traceIndex": {
     "pageTitle": "سلاسل التتبع الرئيسية",

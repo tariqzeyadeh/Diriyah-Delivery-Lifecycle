@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react'
 import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
 import { listBudgetSubmissions } from '@/src/actions/portfolio'
-import { OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { OfficialTag, PageIntro, RegisterDeleteButton, RegisterTable } from '@/components/atlas/records'
 import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +49,7 @@ export default async function BudgetIndexPage() {
               <th className="hidden px-4 py-2.5 font-semibold md:table-cell">{t('tableStrategy')}</th>
               <th className="px-4 py-2.5 text-end font-semibold">{t('tableRequested')}</th>
               <th className="px-4 py-2.5 font-semibold">{t('tableStatus')}</th>
+              <th className="px-4 py-2.5 text-end font-semibold">{t('tableActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -110,6 +111,14 @@ export default async function BudgetIndexPage() {
                   <OfficialTag tone={recordStatusTagTone(b.record_status)}>
                     {sentenceCaseLabel(b.record_status)}
                   </OfficialTag>
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <RegisterDeleteButton
+                    entityType="BUDGET"
+                    entityId={b.budget_submission_id}
+                    canDelete={b.canDelete}
+                    blockedCode={b.deleteBlockedCode}
+                  />
                 </td>
               </tr>
             ))}

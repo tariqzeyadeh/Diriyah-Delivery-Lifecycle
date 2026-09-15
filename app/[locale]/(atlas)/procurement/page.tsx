@@ -1,7 +1,7 @@
 import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
 import { listProcurementItems } from '@/src/actions/portfolio'
-import { OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { OfficialTag, PageIntro, RegisterDeleteButton, RegisterTable } from '@/components/atlas/records'
 import { sentenceCaseLabel, stageTagTone } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +39,7 @@ export default async function ProcurementIndexPage() {
               <th className="px-4 py-3 font-semibold">{t('tableStage')}</th>
               <th className="px-4 py-3 text-end font-semibold">{t('tablePlanned')}</th>
               <th className="px-4 py-3 font-semibold">{t('tableCreated')}</th>
+              <th className="px-4 py-3 text-end font-semibold">{t('tableActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -81,6 +82,14 @@ export default async function ProcurementIndexPage() {
                     {fmtSar(item.planned_value_sar)}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-text-muted">{item.created_at}</td>
+                  <td className="px-4 py-3 text-end">
+                    <RegisterDeleteButton
+                      entityType="PROCUREMENT"
+                      entityId={item.procurement_item_id}
+                      canDelete={item.canDelete}
+                      blockedCode={item.deleteBlockedCode}
+                    />
+                  </td>
                 </tr>
               )
             })}

@@ -21,6 +21,21 @@
     "back": "Back",
     "stepOf": "Step {current} of {total}",
     "fillRequired": "Fill the required fields on this step before continuing.",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "confirmDelete": "Confirm delete",
+    "deleteConfirm": "Delete this record? It will leave the register.",
+    "deleteBlocked": {
+      "not_draft": "Only draft records can be deleted.",
+      "locked": "This record is locked.",
+      "linked_strategy": "Linked to a strategy.",
+      "linked_demand": "Linked to a demand.",
+      "linked_budget": "A budget exists for this record.",
+      "linked_procurement": "Procurement has started.",
+      "linked_project": "A project is registered.",
+      "not_planned": "Procurement has moved past Planned.",
+      "registered": "Registered projects cannot be deleted."
+    },
     "submit": "Submit",
     "explore": "Explore",
     "open": "Open",
@@ -864,6 +879,7 @@
     "strategic": "Strategic",
     "adhoc": "Ad-Hoc",
     "registerCaption": "Demand register",
+    "tableActions": "Actions",
     "reviewsLink": "Conditional reviews",
     "validateLink": "Commercial validation"
   },
@@ -885,7 +901,8 @@
     "registerCaption": "Budget submissions",
     "tableSubmission": "Submission",
     "openBoard": "Board",
-    "openPlan": "Plan"
+    "openPlan": "Plan",
+    "tableActions": "Actions"
   },
   "budgetCreate": {
     "pageTitle": "Create budget",
@@ -910,7 +927,8 @@
     "noRecords": "No procurement items yet.",
     "openBoard": "Open board",
     "registerCaption": "Procurement items",
-    "activated": "Project activated"
+    "activated": "Project activated",
+    "tableActions": "Actions"
   },
   "pmoIndex": {
     "pageTitle": "PMO Handoff",
@@ -943,7 +961,8 @@
     "statusActive": "Active",
     "metricRegistered": "Registered",
     "metricPendingPmo": "Pending PMO",
-    "metricInDelivery": "In delivery"
+    "metricInDelivery": "In delivery",
+    "tableActions": "Actions"
   },
   "traceIndex": {
     "pageTitle": "Master Trace Spines",

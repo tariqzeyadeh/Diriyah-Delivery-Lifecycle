@@ -2,7 +2,7 @@ import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
 import { listDemands } from '@/src/actions/portfolio'
 import { NewRecordButton } from '@/components/atlas/home/NewRecordButton'
-import { OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { OfficialTag, PageIntro, RegisterDeleteButton, RegisterTable } from '@/components/atlas/records'
 import {
   recordStatusTagTone,
   sentenceCaseLabel,
@@ -52,6 +52,7 @@ export default async function DemandIndexPage() {
               <th className="px-4 py-2.5 font-semibold">{t('tableRoute')}</th>
               <th className="hidden px-4 py-2.5 font-semibold md:table-cell">{t('tableUrgency')}</th>
               <th className="px-4 py-2.5 font-semibold">{t('tableStatus')}</th>
+              <th className="px-4 py-2.5 text-end font-semibold">{t('tableActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -94,6 +95,14 @@ export default async function DemandIndexPage() {
                   <OfficialTag tone={recordStatusTagTone(d.record_status)}>
                     {sentenceCaseLabel(d.record_status)}
                   </OfficialTag>
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <RegisterDeleteButton
+                    entityType="DEMAND"
+                    entityId={d.demand_id}
+                    canDelete={d.canDelete}
+                    blockedCode={d.deleteBlockedCode}
+                  />
                 </td>
               </tr>
             ))}

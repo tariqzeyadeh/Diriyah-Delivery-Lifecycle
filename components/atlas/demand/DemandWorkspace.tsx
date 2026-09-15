@@ -21,6 +21,8 @@ import {
   RequiredMark,
   useFormSteps,
 } from '@/components/atlas/forms/FormStepper'
+import { OfficialTag, WorkspaceMetaCard, WorkspaceMetaGrid } from '@/components/atlas/records'
+import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -408,7 +410,6 @@ export function DemandWorkspace({
 
   const hasStrategy = Boolean(form.strategy_id)
   const isStandalone = !hasStrategy
-  const routeLabel = isStandalone ? 'ADHOC' : 'STRATEGIC'
   const br016Valid =
     form.demand_title.trim().length > 0 && form.problem_opportunity_statement.trim().length > 0
   const hasDoNothing = options.some((o) => o.is_do_nothing)
@@ -667,7 +668,7 @@ export function DemandWorkspace({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
             PI-04 · Demand Business Case
@@ -675,35 +676,29 @@ export function DemandWorkspace({
           <h1 className="text-xl font-semibold tracking-tight text-text">
             Demand Workspace
           </h1>
-          <p className="text-sm text-text-muted">
+          <p className="max-w-xl text-sm text-text-muted">
             Capture identity, business case, options, technical impact, and financial appraisal.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Demand ID</p>
-            <p className="mt-0.5 font-mono text-sm font-semibold text-diriyah-primary">{demandId}</p>
-          </div>
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Master Trace</p>
-            <p className="mt-0.5 font-mono text-sm font-semibold text-diriyah-primary">{masterTraceId}</p>
-          </div>
-          <div
-            className={cn(
-              'rounded-md border px-4 py-3',
-              isStandalone ? 'border-diriyah-amber/40 bg-diriyah-amber/10' : 'border-diriyah-green/30 bg-diriyah-green/10',
-            )}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Route</p>
-            <p className="mt-0.5 text-sm font-semibold text-text">{routeLabel}</p>
-          </div>
-          {recordStatus && (
-            <div className="rounded-md border border-border bg-white px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Status</p>
-              <p className="mt-0.5 text-sm font-semibold text-text">{recordStatus} — {completeness}%</p>
+        <WorkspaceMetaGrid>
+          <WorkspaceMetaCard label="Demand ID" value={demandId} mono />
+          <WorkspaceMetaCard label="Master Trace" value={masterTraceId} mono />
+          <WorkspaceMetaCard label="Route">
+            <div className="mt-1">
+              <OfficialTag variant="outlined">
+                {isStandalone ? 'Ad-hoc' : 'Strategic'}
+              </OfficialTag>
             </div>
-          )}
-        </div>
+          </WorkspaceMetaCard>
+          <WorkspaceMetaCard label="Status">
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <OfficialTag tone={recordStatusTagTone(recordStatus)}>
+                {sentenceCaseLabel(recordStatus, 'Draft')}
+              </OfficialTag>
+              <span className="text-xs font-semibold tabular-nums text-text-muted">{completeness}%</span>
+            </div>
+          </WorkspaceMetaCard>
+        </WorkspaceMetaGrid>
       </div>
 
       {isLocked && (

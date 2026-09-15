@@ -2,7 +2,7 @@ import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
 import { listStrategies } from '@/src/actions/portfolio'
 import { NewRecordButton } from '@/components/atlas/home/NewRecordButton'
-import { OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { OfficialTag, PageIntro, RegisterDeleteButton, RegisterTable } from '@/components/atlas/records'
 import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +40,7 @@ export default async function StrategyIndexPage() {
               <th className="hidden px-4 py-2.5 font-semibold md:table-cell">{t('tableHorizon')}</th>
               <th className="px-4 py-2.5 text-end font-semibold">{t('tableFunding')}</th>
               <th className="px-4 py-2.5 font-semibold">{t('tableStatus')}</th>
+              <th className="px-4 py-2.5 text-end font-semibold">{t('tableActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -75,6 +76,14 @@ export default async function StrategyIndexPage() {
                   <OfficialTag tone={recordStatusTagTone(s.record_status)}>
                     {sentenceCaseLabel(s.record_status, t('draft'))}
                   </OfficialTag>
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <RegisterDeleteButton
+                    entityType="STRATEGY"
+                    entityId={s.strategy_id}
+                    canDelete={s.canDelete}
+                    blockedCode={s.deleteBlockedCode}
+                  />
                 </td>
               </tr>
             ))}

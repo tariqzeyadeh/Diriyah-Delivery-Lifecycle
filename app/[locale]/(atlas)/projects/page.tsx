@@ -2,7 +2,7 @@ import { Link } from '@/src/i18n/navigation'
 import { getTranslations } from 'next-intl/server'
 import { listProcurementItems, listProjectRegistrations } from '@/src/actions/portfolio'
 import { isPmoReadyStage } from '@/lib/atlas/procurement'
-import { MetricTile, OfficialTag, PageIntro, RegisterTable } from '@/components/atlas/records'
+import { MetricTile, OfficialTag, PageIntro, RegisterDeleteButton, RegisterTable } from '@/components/atlas/records'
 import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 import { cn } from '@/lib/utils'
 
@@ -42,6 +42,7 @@ export default async function ProjectsPage() {
               <th className="hidden px-4 py-3 font-semibold md:table-cell">{t('tableApproach')}</th>
               <th className="px-4 py-3 font-semibold">{t('tableDates')}</th>
               <th className="px-4 py-3 font-semibold">{t('tableStatus')}</th>
+              <th className="px-4 py-3 text-end font-semibold">{t('tableActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -78,6 +79,14 @@ export default async function ProjectsPage() {
                   <OfficialTag tone={recordStatusTagTone(p.record_status)}>
                     {sentenceCaseLabel(p.record_status, t('statusActive'))}
                   </OfficialTag>
+                </td>
+                <td className="px-4 py-3 text-end">
+                  <RegisterDeleteButton
+                    entityType="PROJECT"
+                    entityId={p.project_id}
+                    canDelete={p.canDelete}
+                    blockedCode={p.deleteBlockedCode}
+                  />
                 </td>
               </tr>
             ))}

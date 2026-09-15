@@ -23,6 +23,8 @@ import {
   RequiredMark,
   useFormSteps,
 } from '@/components/atlas/forms/FormStepper'
+import { OfficialTag, WorkspaceMetaCard, WorkspaceMetaGrid } from '@/components/atlas/records'
+import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -913,7 +915,7 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
   return (
     <div className="space-y-6">
       {/* ── Page header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-diriyah-accent">
             PI-01 · Strategy Formulation
@@ -921,51 +923,30 @@ export function StrategyWorkspace({ strategyId, masterTraceId, initialData }: St
           <h1 className="text-xl font-semibold tracking-tight text-text">
             Strategy Workspace
           </h1>
-          <p className="text-sm text-text-muted">
+          <p className="max-w-xl text-sm text-text-muted">
             Align vision, funding envelope, and balanced-scorecard objectives. Submit to CTO at Gate G-S1.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Strategy ID</p>
-            <p className="mt-0.5 font-mono text-sm font-semibold text-diriyah-primary">{strategyId}</p>
-          </div>
-          <div className="rounded-md border border-border bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Master Trace</p>
-            <p className="mt-0.5 font-mono text-sm font-semibold text-diriyah-primary">{masterTraceId}</p>
-          </div>
-          <div
-            className={cn(
-              'rounded-md border px-4 py-3',
-              isSubmitted
-                ? 'border-diriyah-primary/30 bg-diriyah-primary/10'
-                : recordStatus === 'RETURNED'
-                  ? 'border-diriyah-amber/30 bg-diriyah-amber/10'
-                  : 'border-diriyah-green/30 bg-diriyah-green/10',
-            )}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Status</p>
-            <p className="mt-0.5 text-sm font-semibold text-text">{recordStatus}</p>
-          </div>
-          {/* G-09: Completeness indicator */}
-          {!isLocked && (
-            <div className={cn(
-              'rounded-md border px-4 py-3',
-              completionPct === 100 ? 'border-green-200 bg-green-50' : completionPct >= 60 ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50',
-            )}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">{t('completeness')}</p>
-              <p className={cn('mt-0.5 text-sm font-bold', completionPct === 100 ? 'text-green-700' : completionPct >= 60 ? 'text-amber-700' : 'text-red-600')}>
-                {completionPct}%
-              </p>
-              <div className="mt-1 h-1.5 w-20 rounded-full bg-black/10">
-                <div
-                  className={cn('h-1.5 rounded-full transition-all', completionPct === 100 ? 'bg-green-500' : completionPct >= 60 ? 'bg-amber-500' : 'bg-red-400')}
-                  style={{ width: `${completionPct}%` }}
-                />
-              </div>
+        <WorkspaceMetaGrid>
+          <WorkspaceMetaCard label="Strategy ID" value={strategyId} mono />
+          <WorkspaceMetaCard label="Master Trace" value={masterTraceId} mono />
+          <WorkspaceMetaCard label="Status">
+            <div className="mt-1">
+              <OfficialTag tone={recordStatusTagTone(recordStatus)}>
+                {sentenceCaseLabel(recordStatus, 'Draft')}
+              </OfficialTag>
             </div>
-          )}
-        </div>
+          </WorkspaceMetaCard>
+          <WorkspaceMetaCard label={t('completeness')}>
+            <p className="mt-1 text-sm font-semibold tabular-nums text-text">{completionPct}%</p>
+            <div className="mt-1.5 h-1 w-full rounded-full bg-diriyah-bg-secondary">
+              <div
+                className="h-1 rounded-full bg-diriyah-primary"
+                style={{ width: `${completionPct}%` }}
+              />
+            </div>
+          </WorkspaceMetaCard>
+        </WorkspaceMetaGrid>
       </div>
 
       {/* ── Banners ───────────────────────────────────────────────────────── */}
