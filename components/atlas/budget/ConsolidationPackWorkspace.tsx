@@ -461,6 +461,12 @@ export function ConsolidationPackWorkspace({
       setResult({ ok: false, message: tc('fillRequired') })
       return
     }
+    // First step is the auto-computed summary. CON-018 lives on the next step.
+    if (activeStep === 'summary') {
+      setResult(null)
+      steps.advance()
+      return
+    }
     startTransition(async () => {
       setResult(null)
       const ok = await persist()
