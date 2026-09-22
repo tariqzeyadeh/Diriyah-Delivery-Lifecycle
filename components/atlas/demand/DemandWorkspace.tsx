@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/src/providers/AuthProvider'
-import { useRouter } from '@/src/i18n/navigation'
+import { Link, useRouter } from '@/src/i18n/navigation'
 import { cn } from '@/lib/utils'
 import { saveDemand, submitDemand } from '@/src/actions/demand'
 import {
@@ -718,10 +718,38 @@ export function DemandWorkspace({
       {isLocked && (
         <div className="flex items-start gap-3 rounded-md border border-diriyah-primary/30 bg-diriyah-primary/10 px-4 py-3 text-sm text-text">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-diriyah-primary" />
-          <p>
-            This demand is <strong>locked</strong> ({recordStatus}). It has been submitted for
-            validation. You may not edit until it is returned or approved.
-          </p>
+          <div className="space-y-1">
+            <p>
+              This demand is <strong>locked</strong> ({sentenceCaseLabel(recordStatus, 'Submitted')}).
+              Submit on this page is finished. Do not look for another Submit here.
+            </p>
+            {recordStatus === 'UNDER_REVIEW' ? (
+              <p>
+                {t('nextReviewsBanner')}{' '}
+                <Link href="/demand/reviews" className="font-semibold text-diriyah-primary underline">
+                  {t('nextReviewsLink')}
+                </Link>
+              </p>
+            ) : null}
+            {recordStatus === 'SUBMITTED' ||
+            recordStatus === 'UNDER_VALIDATION' ||
+            recordStatus === 'UNDER_REVIEW' ? (
+              <p>
+                {t('nextValidationBanner')}{' '}
+                <Link href="/demand/validate" className="font-semibold text-diriyah-primary underline">
+                  {t('nextValidationLink')}
+                </Link>
+              </p>
+            ) : null}
+            {recordStatus === 'VALIDATED' || recordStatus === 'VALIDATED_COND' ? (
+              <p>
+                {t('nextBudgetBanner')}{' '}
+                <Link href="/budget" className="font-semibold text-diriyah-primary underline">
+                  {t('nextBudgetLink')}
+                </Link>
+              </p>
+            ) : null}
+          </div>
         </div>
       )}
 

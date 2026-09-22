@@ -4,6 +4,7 @@ import { createHash, randomInt } from 'crypto'
 import { ApprovalDecision, Prisma, VersionStatus } from '@prisma/client'
 import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { areDemandReviewsClear } from '@/src/actions/demand-reviews'
 import { CACHE_TAGS } from '@/src/lib/cache-tags'
 import { auditLog, captureException } from '@/src/lib/logger'
 import {
@@ -174,7 +175,7 @@ export async function getDemandValidationQueue(): Promise<DemandValidationQueueI
   const demands = await prisma.demand.findMany({
     where: {
       is_active: true,
-      record_status: { in: ['UNDER_VALIDATION', 'SUBMITTED'] },
+      record_status: { in: ['UNDER_VALIDATION', 'SUBMITTED', 'UNDER_REVIEW'] },
     },
     select: {
       demand_id: true,
@@ -192,7 +193,16 @@ export async function getDemandValidationQueue(): Promise<DemandValidationQueueI
     orderBy: [{ urgency: 'asc' }, { submitted_at: 'asc' }],
   })
 
-  return demands.map((d) => ({
+  const ready: typeof demands = []
+  for (const demand of demands) {
+    if (demand.record_status === 'UNDER_REVIEW') {
+      const clear = await areDemandReviewsClear(demand.demand_id)
+      if (!clear) continue
+    }
+    ready.push(demand)
+  }
+
+  return ready.map((d) => ({
     demand_id: d.demand_id,
     demand_title: d.demand_title,
     master_trace_id: d.master_trace_id,
@@ -340,7 +350,14 @@ export async function validateDemand(
         },
       })
       if (!demand) throw new Error(`Demand not found: ${demand_id}`)
-      if (!['SUBMITTED', 'UNDER_VALIDATION'].includes(demand.record_status ?? '')) {
+      if (demand.record_status === 'UNDER_REVIEW') {
+        const clear = await areDemandReviewsClear(demand_id)
+        if (!clear) {
+          throw new Error(
+            'Demand is not in a validatable state. Conditional reviews are still open.',
+          )
+        }
+      } else if (!['SUBMITTED', 'UNDER_VALIDATION'].includes(demand.record_status ?? '')) {
         throw new Error(
           'Demand is not in a validatable state. It must be SUBMITTED or UNDER_VALIDATION.',
         )

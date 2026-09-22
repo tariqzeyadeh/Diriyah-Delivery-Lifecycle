@@ -99,7 +99,9 @@ export async function areDemandReviewsClear(demandId: string): Promise<boolean> 
   const types = triggeredReviewTypes(demand)
   if (types.length === 0) return true
   const latest = await latestReviewByGate(prisma, demandId)
-  return types.every((type) => latest.get(REVIEW_GATE[type])?.decision === DecisionEnum.APPROVED)
+  return types.every((type) =>
+    isPassedReviewDecision(latest.get(REVIEW_GATE[type])?.decision),
+  )
 }
 
 export async function getDemandReviewQueue(): Promise<DemandReviewQueueItem[]> {
@@ -389,8 +391,8 @@ export async function submitDemandReview(
         approval_conditions: { critical_finding },
         created_at: now,
       })
-      const reviews_clear = triggered.every(
-        (type) => after.get(REVIEW_GATE[type])?.decision === DecisionEnum.APPROVED,
+      const reviews_clear = triggered.every((type) =>
+        isPassedReviewDecision(after.get(REVIEW_GATE[type])?.decision),
       )
 
       if (reviews_clear) {

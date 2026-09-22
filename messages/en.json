@@ -658,7 +658,13 @@
     "prelimSuccess": "Sent to the Business Owner. They can complete the remaining tabs and submit.",
     "awaitingOwnerBanner": "Complete Options, Technical, Finance and Registers, then submit. A do-nothing option is required if any options are listed.",
     "awaitingOwnerLockedBanner": "You submitted this demand. It is locked for you. The Business Owner can add to it and submit.",
-    "awaitingOwnerWaitBanner": "This demand is with the Business Owner. Only they can add to it and submit."
+    "awaitingOwnerWaitBanner": "This demand is with the Business Owner. Only they can add to it and submit.",
+    "nextReviewsBanner": "Next: finish any open conditional reviews, then commercial validation.",
+    "nextReviewsLink": "Open Demand Reviews",
+    "nextValidationBanner": "Next: switch to Rami Noor (Commercial & Budgeting) and validate this demand. Validation is not on this page.",
+    "nextValidationLink": "Open Demand Validation",
+    "nextBudgetBanner": "Next: Commercial & Budgeting builds the budget lines for this demand.",
+    "nextBudgetLink": "Open Budget"
   },
   "budget": {
     "workspaceTitle": "Budget Lines",
