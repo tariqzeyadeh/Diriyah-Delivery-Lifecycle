@@ -260,10 +260,7 @@ export function BudgetLinesWorkspace({
         line_fiscal_year: '',
       }))
     }
-    return [
-      newLine({ description: 'Platform licenses', category: 'License', line_type: 'OPEX', unit_cost: 250000 }),
-      newLine({ description: 'Implementation services', category: 'Services', line_type: 'CAPEX', quantity: 120, unit_cost: 4500, contingency_pct: 12 }),
-    ]
+    return []
   })
 
   const [savePending, startSave] = useTransition()
@@ -668,7 +665,7 @@ export function BudgetLinesWorkspace({
                       <td className="px-3 py-1.5 text-right font-sans text-sm font-semibold tabular-nums text-diriyah-primary">{formatSar(row.total)}</td>
                       <td className="px-2 py-1.5">
                         {!isLocked && (
-                          <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded text-diriyah-red hover:bg-diriyah-red/10 disabled:opacity-30" disabled={lines.length <= 1} onClick={() => setLines((rows) => (rows.length <= 1 ? rows : rows.filter((r) => r.local_id !== row.local_id)))} aria-label="Remove line">
+                          <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded text-diriyah-red hover:bg-diriyah-red/10 disabled:opacity-30" onClick={() => setLines((rows) => rows.filter((r) => r.local_id !== row.local_id))} aria-label="Remove line">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -766,6 +763,13 @@ export function BudgetLinesWorkspace({
                   </Fragment>
                 )
               })}
+              {computed.rows.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-4 py-10 text-center font-sans text-sm text-text-muted">
+                    No lines yet. Use Add Line to create each cost line yourself.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
