@@ -58,6 +58,7 @@ export default async function DemandWorkspacePage({
         entryRoute={entry_route}
         recordStatus={demand.record_status}
         isLocked={demand.is_locked}
+        submittedBy={demand.submitted_by}
         strategies={strategies}
         initialForm={{
           // Identity

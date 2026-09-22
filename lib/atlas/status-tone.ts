@@ -9,6 +9,7 @@ export function statusTone(status: string | null | undefined): StatusTone {
     case 'PENDING':
     case 'UNDER_REVIEW':
     case 'UNDER_VALIDATION':
+    case 'AWAITING_OWNER':
       return 'submitted'
     case 'APPROVED':
     case 'VALIDATED':

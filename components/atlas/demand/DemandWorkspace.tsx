@@ -23,6 +23,7 @@ import {
 } from '@/components/atlas/forms/FormStepper'
 import { OfficialTag, WorkspaceMetaCard, WorkspaceMetaGrid } from '@/components/atlas/records'
 import { recordStatusTagTone, sentenceCaseLabel } from '@/lib/atlas/record-label'
+import { isDemandAwaitingOwner } from '@/lib/atlas/demand-handoff'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -192,6 +193,7 @@ type DemandWorkspaceProps = {
   initialStakeholders?: StakeholderRow[]
   recordStatus?: string | null
   isLocked?: boolean
+  submittedBy?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -364,13 +366,16 @@ export function DemandWorkspace({
   initialStakeholders,
   recordStatus,
   isLocked,
+  submittedBy,
 }: DemandWorkspaceProps) {
   const t = useTranslations('demand')
   const tc = useTranslations('common')
   const { canEditDemand, currentUser, isRole } = useAuth()
   const router = useRouter()
-  const readOnly = !canEditDemand || isLocked === true
   const isBusinessOwner = isRole('Business Owner')
+  const awaitingOwner = isDemandAwaitingOwner(recordStatus)
+  const ownerHandoffLock = awaitingOwner && !isBusinessOwner
+  const readOnly = !canEditDemand || isLocked === true || ownerHandoffLock
 
   const visibleTabs = useMemo(
     () => DEMAND_TAB_IDS.filter((tabId) => isBusinessOwner || !OWNER_ONLY_TABS.includes(tabId)),
@@ -380,7 +385,11 @@ export function DemandWorkspace({
   const activeTab = steps.currentId as Tab
   const [form, setForm] = useState<DemandFormState>(initialForm)
   const [options, setOptions] = useState<DemandOptionRow[]>(
-    initialOptions?.length ? initialOptions : [newOption(), newOption()],
+    initialOptions?.length
+      ? initialOptions
+      : isBusinessOwner && !awaitingOwner
+        ? [newOption(), newOption()]
+        : [],
   )
   const [benefits, setBenefits] = useState<DemandBenefitRow[]>(initialBenefits ?? [])
   const [raidc, setRaidc] = useState<DemandRaidcRow[]>(initialRaidc ?? [])
@@ -415,7 +424,9 @@ export function DemandWorkspace({
   const hasDoNothing = options.some((o) => o.is_do_nothing)
   const br017Valid = options.length === 0 || hasDoNothing
   const canSave = !readOnly && form.demand_title.trim().length > 0
-  const canSubmit = canSave && br016Valid && br017Valid && attestationChecked
+  const canSubmit = isBusinessOwner
+    ? canSave && br016Valid && br017Valid && attestationChecked
+    : canSave && br016Valid && !awaitingOwner
 
   function stepValid(tab: Tab): boolean {
     switch (tab) {
@@ -535,16 +546,18 @@ export function DemandWorkspace({
       indicative_sourcing_route: form.indicative_sourcing_route || undefined,
       preferred_option_id: form.preferred_option_id || undefined,
       preferred_option_rationale: form.preferred_option_rationale || undefined,
-      options: options.map((o) => ({
-        option_id: persistedId(o.local_id),
-        option_name: o.option_description || 'Option',
-        option_description: o.option_description,
-        option_estimated_cost_sar: o.three_year_cost || undefined,
-        option_delivery_duration: o.delivery_time || undefined,
-        option_risk_score: o.risk_score || undefined,
-        option_weighted_score: o.weighted_score || undefined,
-        is_do_nothing: o.is_do_nothing,
-      })),
+      options: options
+        .filter((o) => o.is_do_nothing || o.option_description.trim().length > 0)
+        .map((o) => ({
+          option_id: persistedId(o.local_id),
+          option_name: o.option_description || 'Option',
+          option_description: o.option_description,
+          option_estimated_cost_sar: o.three_year_cost || undefined,
+          option_delivery_duration: o.delivery_time || undefined,
+          option_risk_score: o.risk_score || undefined,
+          option_weighted_score: o.weighted_score || undefined,
+          is_do_nothing: o.is_do_nothing,
+        })),
       benefits: benefits
         .filter((b) => b.benefit_description.trim())
         .map((b) => ({
@@ -652,8 +665,9 @@ export function DemandWorkspace({
         const reviewCount = submitResult.review_gates.length
         setNotification({
           type: 'success',
-          message:
-            reviewCount > 0
+          message: submitResult.awaiting_owner
+            ? t('prelimSuccess')
+            : reviewCount > 0
               ? `Demand submitted. ${reviewCount} conditional review(s) opened (PI-05). Record is locked.`
               : 'Demand submitted for commercial validation (PI-06). Record is now locked.',
         })
@@ -711,7 +725,25 @@ export function DemandWorkspace({
         </div>
       )}
 
-      {!isLocked && readOnly && (
+      {awaitingOwner && isBusinessOwner && (
+        <div className="flex items-start gap-3 rounded-md border border-diriyah-amber/40 bg-diriyah-amber/10 px-4 py-3 text-sm text-text">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-diriyah-primary" />
+          <p>{t('awaitingOwnerBanner')}</p>
+        </div>
+      )}
+
+      {awaitingOwner && !isBusinessOwner && (
+        <div className="flex items-start gap-3 rounded-md border border-diriyah-primary/30 bg-diriyah-primary/10 px-4 py-3 text-sm text-text">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-diriyah-primary" />
+          <p>
+            {submittedBy && submittedBy === currentUser.email
+              ? t('awaitingOwnerLockedBanner')
+              : t('awaitingOwnerWaitBanner')}
+          </p>
+        </div>
+      )}
+
+      {!isLocked && !awaitingOwner && readOnly && (
         <div className="flex items-start gap-3 rounded-md border border-diriyah-amber/40 bg-diriyah-amber/10 px-4 py-3 text-sm text-text">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-diriyah-primary" />
           <p>
@@ -1722,13 +1754,19 @@ export function DemandWorkspace({
                 title={
                   !br016Valid
                     ? 'BR-016: Title and Problem Statement are required.'
-                    : !br017Valid
+                    : isBusinessOwner && !br017Valid
                       ? 'BR-017: Mark one option as "Do Nothing" before submission.'
-                      : 'Submit demand for validation.'
+                      : isBusinessOwner
+                        ? 'Submit demand for validation.'
+                        : 'Send to the Business Owner to complete and submit.'
                 }
               >
                 {submitPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {submitPending ? t('submitting') : t('submitDemand')}
+                {submitPending
+                  ? t('submitting')
+                  : isBusinessOwner
+                    ? t('submitDemand')
+                    : t('submitToOwner')}
               </button>
             </>
           ) : null}

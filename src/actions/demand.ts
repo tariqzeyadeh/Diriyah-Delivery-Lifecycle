@@ -13,8 +13,9 @@ import { CACHE_TAGS } from '@/src/lib/cache-tags'
 import { auditLog, captureException } from '@/src/lib/logger'
 import { triggeredReviewTypes } from '@/lib/atlas/demand-reviews'
 import { openDemandReviewTasks } from '@/src/lib/demand-review-ops'
-import { requireRole } from '@/src/lib/auth/server-guard'
+import { getServerRole, requireRole } from '@/src/lib/auth/server-guard'
 import { checkDocumentPack } from '@/lib/atlas/document-pack'
+import { DEMAND_AWAITING_OWNER, isDemandAwaitingOwner } from '@/lib/atlas/demand-handoff'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -155,7 +156,7 @@ export type SubmitDemandPayload = {
 }
 
 export type SubmitDemandResult =
-  | { ok: true; demand_id: string; review_gates: string[] }
+  | { ok: true; demand_id: string; review_gates: string[]; awaiting_owner?: boolean }
   | { ok: false; error: string; code?: string }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,11 +189,17 @@ export async function saveDemand(
   if (!payload.demand_title?.trim()) return { ok: false, error: 'demand_title is required.' }
 
   try {
+    const role = (await getServerRole()) ?? 'CTO Office'
     await prisma.$transaction(
       async (tx) => {
       const existing = await tx.demand.findUnique({ where: { demand_id } })
       if (!existing) throw new Error(`Demand not found: ${demand_id}`)
       if (existing.is_locked) throw new Error('Demand is locked — submit a revision request.')
+      if (isDemandAwaitingOwner(existing.record_status) && role !== 'Business Owner') {
+        throw new Error(
+          'This demand is with the Business Owner. Only they can add to it and submit.',
+        )
+      }
 
       const strategyId = payload.strategy_id?.trim() || null
       const previousTraceId = existing.master_trace_id
@@ -362,10 +369,12 @@ export async function saveDemand(
         },
       })
 
-      // Upsert DemandOptions
-      if (payload.options?.length) {
+      // Sync DemandOptions (empty array clears placeholder rows)
+      if (payload.options) {
+        const keepIds = new Set<string>()
         for (const opt of payload.options) {
           const option_id = opt.option_id ?? generateId('OPT')
+          keepIds.add(option_id)
           await tx.demandOption.upsert({
             where: { option_id },
             create: {
@@ -399,6 +408,11 @@ export async function saveDemand(
             },
           })
         }
+        await tx.demandOption.deleteMany({
+          where: keepIds.size
+            ? { demand_id, option_id: { notIn: [...keepIds] } }
+            : { demand_id },
+        })
       }
 
       // Upsert DemandBenefits
@@ -508,21 +522,21 @@ export async function saveDemand(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Submits a Demand Business Case for validation.
+ * Submits a Demand Business Case.
  *
- * Enforces:
- *   BR-016 — title and problem / opportunity statement
- *   BR-017 — at least one do-nothing option if options exist
- * Creates a BudgetSubmission draft on first submit (same Master Trace).
+ * Non–Business Owner creators do a preliminary handoff (AWAITING_OWNER): no BR-017,
+ * no record lock, no reviews, no budget. Only the Business Owner then edits and
+ * performs the final submit (BR-016 / BR-017, lock, reviews, budget draft).
  */
 export async function submitDemand(
   payload: SubmitDemandPayload,
 ): Promise<SubmitDemandResult> {
-  // RBAC: Business Owners submit their own demands
-  const rbac = await requireRole('Business Owner', 'CTO Office')
+  const rbac = await requireRole('Business Owner', 'CTO Office', 'Strategy & Governance')
   if (rbac) return rbac
 
   const { demand_id, submitted_by } = payload
+  const role = (await getServerRole()) ?? 'CTO Office'
+  const isOwner = role === 'Business Owner'
 
   if (!demand_id?.trim()) return { ok: false, error: 'demand_id is required.' }
 
@@ -546,7 +560,6 @@ export async function submitDemand(
         throw new Error('Demand is already submitted.')
       }
 
-      // BR-016: mandatory fields check
       if (!demand.demand_title?.trim()) {
         throw Object.assign(new Error('BR-016: demand_title is required.'), { code: 'BR-016' })
       }
@@ -557,10 +570,27 @@ export async function submitDemand(
         )
       }
 
-      // Standalone (no strategy) is a valid ad-hoc demand. Justification is optional.
+      const now = new Date()
+
+      if (!isOwner) {
+        if (isDemandAwaitingOwner(demand.record_status)) {
+          throw new Error('This demand is already with the Business Owner.')
+        }
+        await tx.demand.update({
+          where: { demand_id },
+          data: {
+            record_status: DEMAND_AWAITING_OWNER,
+            current_stage_code: 'PI-04',
+            submitted_by,
+            submitted_at: now,
+            modified_by: submitted_by,
+            is_locked: false,
+          },
+        })
+        return { demand_id, review_gates: [] as string[], awaiting_owner: true }
+      }
 
       // G-17: the Demand workspace *is* the business case (Business Case tab).
-      // There is no separate BUSINESS_CASE file upload.
       const attachedTypes = await tx.attachment.findMany({
         where: { master_trace_id: demand.master_trace_id ?? '' },
         select: { document_type: true },
@@ -579,7 +609,6 @@ export async function submitDemand(
         )
       }
 
-      // BR-017: must include a do-nothing option
       const hasDoNothing = demand.options.some((o) => o.is_do_nothing === true)
       if (!hasDoNothing && demand.options.length > 0) {
         throw Object.assign(
@@ -590,7 +619,6 @@ export async function submitDemand(
         )
       }
 
-      const now = new Date()
       const reviewTypes = triggeredReviewTypes(demand)
       const hasReviews = reviewTypes.length > 0
 
@@ -647,7 +675,7 @@ export async function submitDemand(
         })
       }
 
-      return { demand_id, review_gates: opened }
+      return { demand_id, review_gates: opened, awaiting_owner: false }
     })
 
     revalidateTag(CACHE_TAGS.PORTFOLIO_METRICS, 'max')
@@ -656,14 +684,19 @@ export async function submitDemand(
       revalidatePath(`/${locale}/demand`)
     }
     auditLog({
-      action_type: 'SUBMIT_DEMAND',
+      action_type: result.awaiting_owner ? 'HANDOFF_DEMAND' : 'SUBMIT_DEMAND',
       entity_type: 'DEMAND',
       entity_id: demand_id,
       active_user_id: submitted_by,
       outcome: 'success',
     })
 
-    return { ok: true, demand_id: result.demand_id, review_gates: result.review_gates }
+    return {
+      ok: true,
+      demand_id: result.demand_id,
+      review_gates: result.review_gates,
+      awaiting_owner: result.awaiting_owner,
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to submit demand'
     const code = (err as { code?: string }).code

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Process Guide — From Strategy Creation to Project Registration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --sand: #f4efe7;
+        --sand-2: #e8dccb;
+        --paper: #fbf8f3;
+        --brown: #7a4e2d;
+        --brown-dark: #5a3823;
+        --accent: #c27451;
+        --gold: #cfa77a;
+        --green: #2f6b52;
+        --ink: #1c140f;
+        --muted: #5c5048;
+        --line: #d9cbb8;
+        --navy: #0e1a2b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        color: var(--ink);
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        font-size: 12.5pt;
+        line-height: 1.7;
+      }
+
+      @page {
+        size: A4;
+        margin: 16mm 15mm 18mm 15mm;
+      }
+
+      .page {
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .cover {
+        min-height: 260mm;
+        padding: 18mm 8mm 12mm;
+        background: linear-gradient(180deg, var(--sand) 0%, var(--paper) 55%, white 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .kicker {
+        font-size: 11pt;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        color: var(--accent);
+        text-transform: uppercase;
+      }
+
+      h1 {
+        font-size: 28pt;
+        line-height: 1.3;
+        color: var(--brown-dark);
+        margin: 10px 0 14px;
+        font-weight: 700;
+      }
+
+      h2 {
+        font-size: 16.5pt;
+        color: var(--brown-dark);
+        margin: 0 0 10px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid var(--gold);
+        font-weight: 700;
+      }
+
+      h3 {
+        font-size: 13pt;
+        color: var(--brown);
+        margin: 16px 0 6px;
+        font-weight: 700;
+      }
+
+      p {
+        margin: 0 0 10px;
+        color: var(--ink);
+      }
+
+      .lede {
+        font-size: 13.5pt;
+        color: var(--muted);
+        max-width: 42rem;
+      }
+
+      .meta-row {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+      }
+
+      .meta {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 14px;
+        min-width: 160px;
+      }
+
+      .meta b {
+        display: block;
+        font-size: 9.5pt;
+        color: var(--accent);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .section {
+        padding: 4mm 2mm 8mm;
+      }
+
+      .roles {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 4px;
+      }
+
+      .roles th,
+      .roles td {
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .roles th {
+        background: var(--brown);
+        color: white;
+        font-weight: 600;
+        font-size: 11pt;
+      }
+
+      .roles tr:nth-child(even) td {
+        background: var(--sand);
+      }
+
+      .chain {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin: 14px 0;
+      }
+
+      .chain-item {
+        display: grid;
+        grid-template-columns: 42px 1fr;
+        gap: 10px;
+        align-items: start;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+
+      .num {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--brown);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 12pt;
+      }
+
+      .chain-item strong {
+        display: block;
+        color: var(--brown-dark);
+      }
+
+      .chain-item span {
+        color: var(--muted);
+        font-size: 11pt;
+      }
+
+      ol.steps {
+        margin: 6px 0 12px;
+        padding: 0 0 0 22px;
+      }
+
+      ol.steps li {
+        margin: 0 0 7px;
+      }
+
+      ul.plain {
+        margin: 6px 0 12px;
+        padding: 0 0 0 20px;
+      }
+
+      ul.plain li {
+        margin: 0 0 6px;
+      }
+
+      .callout {
+        background: var(--sand);
+        border-left: 5px solid var(--accent);
+        border-radius: 8px 0 0 8px;
+        padding: 10px 14px;
+        margin: 12px 0;
+      }
+
+      .callout.green {
+        background: #edf6f1;
+        border-left-color: var(--green);
+      }
+
+      .callout.navy {
+        background: #eef2f6;
+        border-left-color: var(--navy);
+      }
+
+      .who {
+        display: inline-block;
+        background: var(--brown);
+        color: white;
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 10pt;
+        font-weight: 600;
+        margin-right: 6px;
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        font-size: 10.5pt;
+        color: var(--muted);
+      }
+
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        background: white;
+      }
+
+      .card h3 {
+        margin-top: 0;
+      }
+
+      .cover-foot {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        color: var(--muted);
+        font-size: 11pt;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page cover">
+      <div>
+        <p class="kicker">Diriyah Company · Strategic governance of technology investment</p>
+        <h1>Process guide<br />From strategy creation to project registration</h1>
+        <p class="lede">
+          This guide is for the client and business stakeholders. It explains how the process
+          moves, step by step, who is responsible at each stage, and what happens after each
+          decision — with no technical detail.
+        </p>
+        <div class="meta-row">
+          <div class="meta">
+            <b>Audience</b>
+            Client and decision makers
+          </div>
+          <div class="meta">
+            <b>Process scope</b>
+            From an approved idea to a registered project
+          </div>
+          <div class="meta">
+            <b>End result</b>
+            An official project linked to strategy, funding, and procurement
+          </div>
+        </div>
+      </div>
+      <div class="cover-foot">
+        Diriyah Strategic Governance Platform · Management process guide · Not a technical systems manual
+      </div>
+    </section>
+
+    <section class="page section">
+      <h2>Why this process exists</h2>
+      <p>
+        A technology investment does not start by “opening a project”. It starts with a clear
+        intent: what do we want to achieve? Why do we need funding? And is the approved amount
+        the same amount that will later be bought against?
+      </p>
+      <p>
+        The platform keeps those questions on one unbroken path. Every initiative carries a
+        single follow-up number that travels with the strategy, then the demand, then the
+        budget, then procurement, then the registered project. Leadership can then see that the
+        final project came from an approved objective, approved funding, and completed buying —
+        not from scattered files.
+      </p>
+      <div class="callout">
+        The platform covers the stage before day-to-day delivery. The process ends at
+        <strong>project registration</strong> with the Project Management Office. Delivery work
+        then continues in the usual project tools, while the link and the impact remain visible here.
+      </div>
+
+      <h2>Who works in this process?</h2>
+      <table class="roles">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>What they do</th>
+            <th>When they appear</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Strategy &amp; Governance</td>
+            <td>Drafts the strategy, objectives, and performance measures, and reviews architecture and data governance when needed.</td>
+            <td>At the start, and in some reviews after the demand is submitted.</td>
+          </tr>
+          <tr>
+            <td>Business Owner</td>
+            <td>Owns the demand case, completes the remaining content, and makes the final demand submission.</td>
+            <td>After the demand is created, and before funding.</td>
+          </tr>
+          <tr>
+            <td>Commercial &amp; Budgeting</td>
+            <td>Builds the budget lines, writes the funding recommendation, and sends the pack for technology-office approval.</td>
+            <td>After the demand is commercially accepted.</td>
+          </tr>
+          <tr>
+            <td>CTO Office</td>
+            <td>Approves the strategy, reviews security when needed, and approves the budget.</td>
+            <td>At the main approval gates.</td>
+          </tr>
+          <tr>
+            <td>Project Management Office</td>
+            <td>Follows procurement through to receipt, then registers the project officially.</td>
+            <td>After funding is approved, until the project is registered.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="footer-note">
+        If the screen says approval is waiting for a specific role, switch to that role before making the decision.
+      </p>
+    </section>
+
+    <section class="page section">
+      <h2>The full picture in twelve steps</h2>
+      <p>This is the complete strategic path. The pages that follow explain each stage in detail.</p>
+      <div class="chain">
+        <div class="chain-item">
+          <div class="num">1</div>
+          <div><strong>Create a strategy</strong><span>A new draft with title, scope, indicative funding, and objectives.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">2</div>
+          <div><strong>Submit the strategy for approval</strong><span>The draft is locked and waits for the technology office.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">3</div>
+          <div><strong>Approve the strategy</strong><span>The strategy is complete. No demand or budget is created automatically.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">4</div>
+          <div><strong>Create a demand</strong><span>A business case linked to the approved strategy, or a standalone case with a written reason.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">5</div>
+          <div><strong>Initial handoff to the Business Owner</strong><span>Whoever created the demand sends it on. After that, only the Business Owner can edit it.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">6</div>
+          <div><strong>Final demand submission</strong><span>The Business Owner completes options and details, then submits. A budget draft is created.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">7</div>
+          <div><strong>Reviews if needed</strong><span>Architecture, security, or data — only if the demand marked an impact there.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">8</div>
+          <div><strong>Commercial validation of the demand</strong><span>Completeness, no unnoticed duplicate, then accept or return.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">9</div>
+          <div><strong>Build the budget and consolidation pack</strong><span>Clear lines, a written funding narrative, then send for approval.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">10</div>
+          <div><strong>Approve the budget</strong><span>After approval, a procurement plan opens against the approved amount.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">11</div>
+          <div><strong>Procurement through to receipt</strong><span>Each card moves one stage at a time until acceptance or completion.</span></div>
+        </div>
+        <div class="chain-item">
+          <div class="num">12</div>
+          <div><strong>Register the project</strong><span>The PMO registers the official project on the same follow-up chain.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page section">
+      <h2>Stage 1 — Write the strategy</h2>
+      <p><span class="who">Strategy &amp; Governance</span></p>
+      <p>
+        Start from Home and create a new record of type <strong>Strategy</strong>. A draft opens
+        for completion. This is not a project yet. It is the frame that sets direction, boundaries, and priorities.
+      </p>
+      <h3>What to fill in</h3>
+      <ol class="steps">
+        <li>Title, type, executive summary, vision, mission, and drivers.</li>
+        <li>Current state and target state, what is in scope and what is out of scope.</li>
+        <li>An indicative funding envelope in SAR (capital and operating). This is a guiding ceiling, not a budget approval.</li>
+        <li>Strategic objectives, with a weight for each so the weights add up to 100%.</li>
+        <li>Under each objective: performance measures (name, unit, target, source, owner). If measures inside an objective have weights, those must also add up to 100%.</li>
+        <li>Save as you go.</li>
+      </ol>
+      <div class="callout">
+        No demand and no budget are created at this stage. The strategy is finished when it is approved. The demand is created later, by a deliberate choice.
+      </div>
+
+      <h2>Stage 2 — Submit and approve the strategy</h2>
+      <p><span class="who">Strategy &amp; Governance</span> then <span class="who">CTO Office</span></p>
+      <h3>Submission</h3>
+      <ol class="steps">
+        <li>Once objectives and weights are complete, submit the strategy to the strategy approval gate.</li>
+        <li>The draft is locked so it cannot be edited during review.</li>
+        <li>It appears in the technology-office approval list.</li>
+      </ol>
+      <h3>Technology-office decision</h3>
+      <ul class="plain">
+        <li><strong>Approve:</strong> the strategy is complete and locked. A demand can now be created and linked to it.</li>
+        <li><strong>Approve with conditions:</strong> the same result, with mandatory conditions text.</li>
+        <li><strong>Return for revision:</strong> it is unlocked for correction, with a mandatory comment. Re-submission raises the version number and keeps the history.</li>
+        <li><strong>Reject:</strong> the case is closed in place and is not reopened as a new draft on the same receipt. If needed, a new path is started.</li>
+      </ul>
+      <div class="callout green">
+        After approval, you can create a demand linked to this strategy. The budget still does not appear until that demand is later submitted.
+      </div>
+    </section>
+
+    <section class="page section">
+      <h2>Stage 3 — Create the demand (business case)</h2>
+      <p>
+        The demand answers “why do we need this investment?”. Create it from the demand list, or from Create demand after the strategy is approved.
+      </p>
+
+      <div class="two">
+        <div class="card">
+          <h3>Demand linked to a strategy</h3>
+          <ol class="steps">
+            <li>Create a new demand.</li>
+            <li>On Identity, select the approved strategy.</li>
+            <li>The demand stays on the same follow-up chain as the strategy.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Standalone demand (no strategy)</h3>
+          <ol class="steps">
+            <li>Leave the linked strategy empty.</li>
+            <li>Write a clear standalone justification (at least twenty characters).</li>
+            <li>The rest of the process still applies and remains auditable. Bypass is allowed. Hiding the bypass is not.</li>
+          </ol>
+        </div>
+      </div>
+
+      <h3>What the business case contains</h3>
+      <ol class="steps">
+        <li>Title, urgency, impact, current state, problem or opportunity, in scope and out of scope, and the strategic contribution.</li>
+        <li>Indicative costs: one-off, recurring, and an approximate total in SAR.</li>
+        <li>Solution options, including a do-nothing option if any options are listed.</li>
+        <li>Expected benefits, plus risks, assumptions, dependencies, and constraints.</li>
+        <li>If there is an impact on architecture, security and privacy, or data governance, mark it here. Later reviews depend on those flags.</li>
+      </ol>
+
+      <h2>Stage 4 — Initial handoff, then final submission</h2>
+      <p>The demand is not locked for everyone on the first submit. The process is deliberately in two parts:</p>
+      <h3>1) Initial submit — whoever created the demand</h3>
+      <p>
+        If someone other than the Business Owner created the demand (for example Strategy &amp; Governance or the CTO Office), they complete Identity, the business case, and alignment, then click <strong>Submit to Business Owner</strong>.
+      </p>
+      <ul class="plain">
+        <li>They are not asked to finish the solution options at this point, so the process does not stop on detail that is not their job.</li>
+        <li>After this submit, the case moves to the Business Owner.</li>
+        <li>The person who made the initial submit is <strong>locked out</strong>: they can no longer edit.</li>
+        <li>No reviews open, and no budget is created at this moment.</li>
+      </ul>
+      <h3>2) Final submit — Business Owner only</h3>
+      <p><span class="who">Business Owner</span></p>
+      <ol class="steps">
+        <li>Open the demand and complete options, technical, finance, and registers.</li>
+        <li>If options are listed, mark one as do-nothing / base case.</li>
+        <li>Confirm that the business-case content is accurate and complete.</li>
+        <li>Submit the demand. The record is now locked on the official path, and a <strong>budget draft</strong> is created on the same follow-up chain.</li>
+      </ol>
+      <div class="callout navy">
+        If the Business Owner created the demand from the start, they complete every tab and make the final submit directly, with no handoff in between.
+      </div>
+    </section>
+
+    <section class="page section">
+      <h2>Stage 5 — Conditional reviews (may be skipped)</h2>
+      <p>This stage appears only if the demand marked a specific impact:</p>
+      <table class="roles">
+        <thead>
+          <tr>
+            <th>If the demand marked</th>
+            <th>Who reviews?</th>
+            <th>What can they decide?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Architecture impact</td>
+            <td>Strategy &amp; Governance</td>
+            <td>Endorse, endorse with conditions, or return</td>
+          </tr>
+          <tr>
+            <td>Security / privacy impact</td>
+            <td>CTO Office</td>
+            <td>Endorse, endorse with conditions, or return</td>
+          </tr>
+          <tr>
+            <td>Data-governance impact</td>
+            <td>Strategy &amp; Governance</td>
+            <td>Endorse, endorse with conditions, or return</td>
+          </tr>
+        </tbody>
+      </table>
+      <ol class="steps">
+        <li>The reviewer reads the case and writes an assessment.</li>
+        <li>The demand is not ready for funding while any of those reviews remain open.</li>
+        <li>If no impact flag was raised, this stage is skipped, and the skip is recorded — it is not hidden.</li>
+      </ol>
+
+      <h2>Stage 6 — Validate the demand</h2>
+      <p><span class="who">Commercial &amp; Budgeting</span></p>
+      <ol class="steps">
+        <li>Open the validation list.</li>
+        <li>Check completeness: title, problem, scope, indicative cost, and start dates where needed.</li>
+        <li>Check for possible duplicates against other submitted or in-review demands. If a similar case appears, merge or justify continuing. Do not ignore it.</li>
+        <li>Record the decision: accept, accept with conditions, or return.</li>
+      </ol>
+      <p>A demand accepted here is the base that budget lines hang from.</p>
+    </section>
+
+    <section class="page section">
+      <h2>Stage 7 — Budget lines and the consolidation pack</h2>
+      <p><span class="who">Commercial &amp; Budgeting</span></p>
+      <p>
+        The budget draft was created at the final demand submission. Before that, no budget appears for this initiative.
+      </p>
+      <h3>Budget lines</h3>
+      <ol class="steps">
+        <li>Open the budget on the same follow-up number.</li>
+        <li>Add at least one line: description, type, operating or capital, category, quantity, unit price, contingency, and requested total in SAR.</li>
+        <li>Watch the totals at the top: operating, capital, contingency, estimated tax, and grand total.</li>
+        <li>The requested amount must be greater than zero.</li>
+        <li>If a real funding ceiling exists and the request exceeds it, a warning appears and does not necessarily block save. If the ceiling is zero, the over-commit warning will not fire.</li>
+        <li>Save the lines.</li>
+      </ol>
+      <h3>Consolidation pack (before funding approval)</h3>
+      <ol class="steps">
+        <li>From budget lines, open the consolidation pack.</li>
+        <li>Write the funding narrative (at least twenty characters) and the recommendation.</li>
+        <li>Save governance.</li>
+        <li>Confirm requested versus validated versus approved ceiling in writing.</li>
+      </ol>
+      <div class="callout">
+        Without this written narrative, the budget cannot be sent for approval. The pack is the on-screen text, not a file that replaces it.
+      </div>
+      <h3>Send for funding approval</h3>
+      <ol class="steps">
+        <li>Still as Commercial &amp; Budgeting, submit the budget to the budget approval gate.</li>
+        <li>The figures lock and wait for the technology office.</li>
+      </ol>
+
+      <h2>Stage 8 — Approve the budget</h2>
+      <p><span class="who">CTO Office</span></p>
+      <ol class="steps">
+        <li>Open the submitted budget.</li>
+        <li>Confirm that open validation findings are cleared, if any.</li>
+        <li>Choose one of these decisions:</li>
+      </ol>
+      <ul class="plain">
+        <li><strong>Approve:</strong> the budget is locked and approved. A procurement plan and buying items are created against the approved amount.</li>
+        <li><strong>Approve with conditions:</strong> the same result, with mandatory conditions text.</li>
+        <li><strong>Return the pack:</strong> it goes back to finance with a mandatory comment.</li>
+        <li><strong>Return selected lines:</strong> only the chosen lines go back; the rest stay in the pack.</li>
+        <li><strong>Reject:</strong> the submission is closed. No approved funding, and no procurement from this receipt.</li>
+      </ul>
+      <div class="callout green">
+        After approval, the figures are the official version. Approved cells are not edited by hand. Any change is made through an official return, then a new cycle.
+        Do not click Approve a second time after the decision is complete.
+      </div>
+    </section>
+
+    <section class="page section">
+      <h2>Stage 9 — Procurement through to receipt</h2>
+      <p><span class="who">Project Management Office</span> or commercial execution, as assigned</p>
+      <h3>Procurement plan</h3>
+      <ol class="steps">
+        <li>Open Procurement and select the budget that was just approved.</li>
+        <li>Review title, period, owner, available funding, planned value, and item count.</li>
+        <li>Every buying item must sit on an approved budget line and must not exceed that line’s ceiling in SAR.</li>
+      </ol>
+      <h3>Tracking board</h3>
+      <p>Each card moves one stage at a time, in this order:</p>
+      <ol class="steps">
+        <li>Planned</li>
+        <li>Purchase-request preparation</li>
+        <li>Purchase-request approval</li>
+        <li>Market competition</li>
+        <li>Evaluation</li>
+        <li>Award</li>
+        <li>Commitment</li>
+        <li>Delivery</li>
+        <li>Acceptance</li>
+        <li>Completed</li>
+      </ol>
+      <p>A card may move to Cancelled as a side path, not from Completed.</p>
+      <ul class="plain">
+        <li>Move one stage, wait until the board settles, then move again. Skipping stages is not saved.</li>
+        <li>Actual or expected commitment must not exceed the approved item budget by more than a small agreed margin.</li>
+        <li>From award onward, the committed amount can be recorded on the card.</li>
+        <li>PMO handoff becomes ready at <strong>Acceptance</strong> or <strong>Completed</strong>.</li>
+      </ul>
+
+      <h2>Stage 10 — Register the project</h2>
+      <p><span class="who">Project Management Office</span></p>
+      <p>The registration list shows received or completed items that do not yet have a registered project.</p>
+      <ol class="steps">
+        <li>Open the PMO handoff from the procurement card, or from the project-registration gate.</li>
+        <li>Confirm readiness: the demand is accepted, the budget is approved, procurement is at acceptance or completed, and the pack is complete.</li>
+        <li>Register the project: name, project manager, delivery method, planned dates, and the project budget inherited from the buying item, with links to measures and objectives.</li>
+        <li>Submit registration. The official project is created on the same follow-up chain.</li>
+        <li>Confirm the row appears in the project register.</li>
+      </ol>
+      <div class="callout">
+        A project cannot be registered while the item is still in planning, competition, or award only. Receipt or completion is required before registration.
+      </div>
+    </section>
+
+    <section class="page section">
+      <h2>After registration — what leadership sees</h2>
+      <p>This is not a second process. These are views of the same chain:</p>
+      <ul class="plain">
+        <li><strong>Projects:</strong> the official register, status, and budget.</li>
+        <li><strong>Performance:</strong> actual versus target on the measures.</li>
+        <li><strong>Value realization:</strong> benefits promised on the demand versus what is delivered after registration.</li>
+        <li><strong>Traceability:</strong> from strategy to objective to demand to budget line to buying item to project.</li>
+        <li><strong>Evidence:</strong> attachments, comments, and approval receipts.</li>
+        <li><strong>Reports and the one-pager:</strong> an executive summary. Do not treat the figures as approved fact until at least one budget has passed the funding gate.</li>
+      </ul>
+
+      <h2>Short path if you start from a demand with no strategy</h2>
+      <ol class="steps">
+        <li>Create a demand, leave the strategy link empty, and write the standalone justification.</li>
+        <li>If the creator is not the Business Owner, send the initial handoff, then the Business Owner makes the final submit.</li>
+        <li>Continue from reviews (if any), then validation, budget, funding approval, procurement, and project registration.</li>
+      </ol>
+
+      <h2>Practical rules that prevent confusion</h2>
+      <ul class="plain">
+        <li>No budget opens before the final demand submission.</li>
+        <li>Approving the strategy is not enough to create a project.</li>
+        <li>Approving the budget is what opens procurement.</li>
+        <li>PMO registration is what turns the chain into an official project.</li>
+        <li>Every return is recorded. The approved version is not quietly replaced.</li>
+        <li>If approval will not proceed, first confirm that the correct role is making the decision.</li>
+      </ul>
+
+      <div class="callout green">
+        <strong>End of the process:</strong> approved strategy → complete and accepted demand → approved budget → received procurement → registered project.
+        Leadership can then say with confidence: this project came through governance, not from a side file.
+      </div>
+      <p class="footer-note">Diriyah Company · Stakeholder process guide · Management edition</p>
+    </section>
+  </body>
+</html>
