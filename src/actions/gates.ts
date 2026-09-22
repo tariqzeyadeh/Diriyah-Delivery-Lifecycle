@@ -1097,12 +1097,16 @@ export async function createAttachmentRecord(payload: {
   file_size_bytes: number
   mime_type?: string
   uploaded_by?: string
+  /** Optional inline file body (base64, no data-URL prefix). Kept for download on the POC. */
+  file_content_base64?: string
 }) {
   try {
     const attachment_id = generateId('ATT')
     const uploaded_by = (payload.uploaded_by?.trim() || 'system').slice(0, 128)
+    const mime = (payload.mime_type || 'application/octet-stream').slice(0, 128)
+    const inline = payload.file_content_base64?.trim()
     const checksum = createHash('sha256')
-      .update(`${payload.file_name}:${payload.file_size_bytes}:${Date.now()}`)
+      .update(inline || `${payload.file_name}:${payload.file_size_bytes}:${Date.now()}`)
       .digest('hex')
 
     const row = await prisma.attachment.create({
@@ -1112,7 +1116,7 @@ export async function createAttachmentRecord(payload: {
         document_type: 'APPROVAL_EVIDENCE',
         file_name: payload.file_name.slice(0, 255),
         file_version: '1',
-        mime_type: (payload.mime_type || 'application/octet-stream').slice(0, 128),
+        mime_type: mime,
         file_size_bytes: payload.file_size_bytes,
         file_checksum: checksum,
         virus_scan_status: VirusScanStatus.PASSED,
@@ -1121,6 +1125,9 @@ export async function createAttachmentRecord(payload: {
         created_by: uploaded_by,
         master_trace_id: payload.master_trace_id || null,
         version_number: 1,
+        uploaded_by_at: inline
+          ? { storage: 'inline', mime_type: mime, content_b64: inline }
+          : undefined,
       },
     })
 
@@ -1134,12 +1141,45 @@ export async function createAttachmentRecord(payload: {
       attachment_id,
     })
 
-    return { ok: true as const, attachment: row }
+    return { ok: true as const, attachment: row, has_download: Boolean(inline) }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create attachment'
     captureException(err, {
       action_type: 'CREATE_ATTACHMENT',
       master_trace_id: payload.master_trace_id,
+      outcome: 'failure',
+      error: message,
+    })
+    return { ok: false as const, error: message }
+  }
+}
+
+export async function deleteAttachmentRecord(attachment_id: string) {
+  if (!attachment_id?.trim()) return { ok: false as const, error: 'attachment_id is required.' }
+  try {
+    const existing = await prisma.attachment.findUnique({
+      where: { attachment_id },
+      select: { attachment_id: true, is_locked: true, master_trace_id: true, file_name: true },
+    })
+    if (!existing) return { ok: false as const, error: 'Attachment not found.' }
+    if (existing.is_locked) {
+      return { ok: false as const, error: 'This attachment is locked and cannot be deleted.' }
+    }
+    await prisma.attachment.delete({ where: { attachment_id } })
+    auditLog({
+      action_type: 'DELETE_ATTACHMENT',
+      master_trace_id: existing.master_trace_id ?? undefined,
+      entity_type: 'ATTACHMENT',
+      entity_id: attachment_id,
+      outcome: 'success',
+      note: existing.file_name,
+    })
+    return { ok: true as const }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete attachment'
+    captureException(err, {
+      action_type: 'DELETE_ATTACHMENT',
+      entity_id: attachment_id,
       outcome: 'failure',
       error: message,
     })
@@ -1327,19 +1367,51 @@ export async function submitGateDecision(payload: {
 
 export async function listGateComments(_entityId: string, masterTraceId?: string) {
   if (!masterTraceId) return []
-  return prisma.comment.findMany({
+  const rows = await prisma.comment.findMany({
     where: { master_trace_id: masterTraceId },
     orderBy: { created_at: 'desc' },
     take: 50,
+    select: {
+      comment_id: true,
+      comment_text: true,
+      comment_type: true,
+      uploaded_by: true,
+      created_at: true,
+      resolution_status: true,
+    },
   })
+  return rows
 }
 
 export async function listGateAttachments(_entityId: string, masterTraceId?: string) {
   if (!masterTraceId) return []
-  return prisma.attachment.findMany({
+  const rows = await prisma.attachment.findMany({
     where: { master_trace_id: masterTraceId },
     orderBy: { created_at: 'desc' },
     take: 50,
+    select: {
+      attachment_id: true,
+      file_name: true,
+      file_size_bytes: true,
+      mime_type: true,
+      virus_scan_status: true,
+      uploaded_by: true,
+      uploaded_at: true,
+      uploaded_by_at: true,
+    },
+  })
+  return rows.map((row) => {
+    const store = row.uploaded_by_at as { content_b64?: string } | null
+    return {
+      attachment_id: row.attachment_id,
+      file_name: row.file_name,
+      file_size_bytes: row.file_size_bytes,
+      mime_type: row.mime_type,
+      virus_scan_status: row.virus_scan_status,
+      uploaded_by: row.uploaded_by,
+      uploaded_at: row.uploaded_at,
+      has_download: Boolean(store?.content_b64),
+    }
   })
 }
 

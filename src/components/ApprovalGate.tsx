@@ -11,6 +11,7 @@ import {
   Loader2,
   FileDown,
   ScrollText,
+  Trash2,
 } from 'lucide-react'
 import { useAuth } from '@/src/providers/AuthProvider'
 import { useTranslations } from 'next-intl'
@@ -18,7 +19,10 @@ import { useRouter } from '@/src/i18n/navigation'
 import {
   createAttachmentRecord,
   createCommentRecord,
+  deleteAttachmentRecord,
   listGateApprovals,
+  listGateAttachments,
+  listGateComments,
   submitGateDecision,
 } from '@/src/actions/gates'
 
@@ -39,6 +43,9 @@ type LocalAttachment = {
   file_name: string
   file_size_bytes: number
   virus_scan_status: string
+  uploaded_by?: string
+  uploaded_at?: string
+  has_download: boolean
 }
 
 type LocalComment = {
@@ -46,6 +53,22 @@ type LocalComment = {
   comment_text: string
   requires_resolution: boolean
   created_at: string
+  uploaded_by?: string
+}
+
+const MAX_INLINE_BYTES = 2 * 1024 * 1024
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const raw = String(reader.result ?? '')
+      const comma = raw.indexOf(',')
+      resolve(comma >= 0 ? raw.slice(comma + 1) : raw)
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
 }
 
 type HistoryRow = {
@@ -86,6 +109,15 @@ export function ApprovalGate({
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [localClosed, setLocalClosed] = useState(alreadyDecided)
+  const blobUrls = useRef(new Map<string, string>())
+
+  useEffect(() => {
+    const blobs = blobUrls.current
+    return () => {
+      for (const url of blobs.values()) URL.revokeObjectURL(url)
+      blobs.clear()
+    }
+  }, [])
 
   useEffect(() => {
     if (alreadyDecided) setLocalClosed(true)
@@ -109,9 +141,37 @@ export function ApprovalGate({
     )
   }, [entityId, masterTraceId])
 
+  const refreshEvidence = useCallback(async () => {
+    const [files, notes] = await Promise.all([
+      listGateAttachments(entityId, masterTraceId),
+      listGateComments(entityId, masterTraceId),
+    ])
+    setAttachments(
+      files.map((a) => ({
+        attachment_id: a.attachment_id,
+        file_name: a.file_name,
+        file_size_bytes: a.file_size_bytes,
+        virus_scan_status: String(a.virus_scan_status),
+        uploaded_by: a.uploaded_by,
+        uploaded_at: a.uploaded_at ? new Date(a.uploaded_at).toISOString() : undefined,
+        has_download: a.has_download,
+      })),
+    )
+    setComments(
+      notes.map((c) => ({
+        comment_id: c.comment_id,
+        comment_text: c.comment_text,
+        requires_resolution: c.comment_type === 'VALIDATION_FINDING',
+        created_at: new Date(c.created_at).toISOString(),
+        uploaded_by: c.uploaded_by,
+      })),
+    )
+  }, [entityId, masterTraceId])
+
   useEffect(() => {
     void refreshHistory()
-  }, [refreshHistory])
+    void refreshEvidence()
+  }, [refreshHistory, refreshEvidence])
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
@@ -119,6 +179,15 @@ export function ApprovalGate({
       const file = files[0]
       startTransition(async () => {
         setError(null)
+        let file_content_base64: string | undefined
+        if (file.size <= MAX_INLINE_BYTES) {
+          try {
+            file_content_base64 = await fileToBase64(file)
+          } catch {
+            setError('Could not read the selected file.')
+            return
+          }
+        }
         const result = await createAttachmentRecord({
           entity_type: entityType,
           entity_id: entityId,
@@ -127,17 +196,23 @@ export function ApprovalGate({
           file_size_bytes: file.size,
           mime_type: file.type || 'application/octet-stream',
           uploaded_by: actorId,
+          file_content_base64,
         })
         if (!result.ok) {
           setError(result.error)
           return
         }
+        const blobUrl = URL.createObjectURL(file)
+        blobUrls.current.set(result.attachment.attachment_id, blobUrl)
         setAttachments((prev) => [
           {
             attachment_id: result.attachment.attachment_id,
             file_name: result.attachment.file_name,
             file_size_bytes: result.attachment.file_size_bytes,
             virus_scan_status: result.attachment.virus_scan_status,
+            uploaded_by: actorId,
+            uploaded_at: new Date().toISOString(),
+            has_download: true,
           },
           ...prev,
         ])
@@ -146,6 +221,40 @@ export function ApprovalGate({
     },
     [actorId, entityId, entityType, masterTraceId],
   )
+
+  function downloadAttachment(a: LocalAttachment) {
+    const blobUrl = blobUrls.current.get(a.attachment_id)
+    if (blobUrl) {
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = a.file_name
+      link.click()
+      return
+    }
+    if (!a.has_download) {
+      setError('This attachment has no stored file to download.')
+      return
+    }
+    window.location.href = `/api/storage/attachment/${encodeURIComponent(a.attachment_id)}`
+  }
+
+  function removeAttachment(a: LocalAttachment) {
+    startTransition(async () => {
+      setError(null)
+      const result = await deleteAttachmentRecord(a.attachment_id)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      const blobUrl = blobUrls.current.get(a.attachment_id)
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl)
+        blobUrls.current.delete(a.attachment_id)
+      }
+      setAttachments((prev) => prev.filter((row) => row.attachment_id !== a.attachment_id))
+      setMessage(`Removed ${a.file_name}`)
+    })
+  }
 
   function addComment() {
     if (!commentText.trim()) return
@@ -169,6 +278,7 @@ export function ApprovalGate({
           comment_text: result.comment.comment_text,
           requires_resolution: requiresResolution,
           created_at: new Date().toISOString(),
+          uploaded_by: actorId,
         },
         ...prev,
       ])
@@ -282,15 +392,48 @@ export function ApprovalGate({
             onChange={(e) => handleFiles(e.target.files)}
           />
           <ul className="space-y-2">
-            {attachments.map((a) => (
-              <li
-                key={a.attachment_id}
-                className="flex items-center justify-between rounded-lg border border-border bg-diriyah-bg-alt/40 px-3 py-2 text-sm"
-              >
-                <span className="truncate font-medium text-text">{a.file_name}</span>
-                <span className="shrink-0 text-xs text-diriyah-green">{a.virus_scan_status}</span>
+            {attachments.length === 0 ? (
+              <li className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">
+                No attachments yet.
               </li>
-            ))}
+            ) : (
+              attachments.map((a) => (
+                <li
+                  key={a.attachment_id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-diriyah-bg-alt/40 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-text">{a.file_name}</p>
+                    <p className="truncate text-[11px] text-text-muted">
+                      {a.virus_scan_status}
+                      {a.uploaded_by ? ` · ${a.uploaded_by}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => downloadAttachment(a)}
+                      disabled={pending || (!a.has_download && !blobUrls.current.has(a.attachment_id))}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-white px-2 text-[11px] font-semibold text-diriyah-primary hover:border-diriyah-accent disabled:opacity-50"
+                      title="Download attachment"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(a)}
+                      disabled={pending}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 text-[11px] font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                      title="Delete attachment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))
+            )}
           </ul>
         </div>
 
@@ -322,20 +465,37 @@ export function ApprovalGate({
           >
             Add comment
           </button>
-          <ul className="max-h-48 space-y-2 overflow-y-auto">
-            {comments.map((c) => (
-              <li key={c.comment_id} className="rounded-lg border border-border px-3 py-2 text-sm">
-                <p className="text-text">{c.comment_text}</p>
-                {c.requires_resolution ? (
-                  <p className="mt-1 text-xs font-semibold text-diriyah-red">
-                    Requires resolution · OPEN
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-text-muted">General note</p>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Submitted comments
+            </p>
+            {comments.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">
+                No comments submitted yet.
+              </p>
+            ) : (
+              <ul className="max-h-64 space-y-2 overflow-y-auto">
+                {comments.map((c) => (
+                  <li key={c.comment_id} className="rounded-lg border border-border px-3 py-2 text-sm">
+                    <p className="text-text">{c.comment_text}</p>
+                    <p className="mt-1 text-xs text-text-muted">
+                      {c.uploaded_by ?? 'Unknown'}
+                      {c.created_at
+                        ? ` · ${new Date(c.created_at).toLocaleString('en-GB')}`
+                        : ''}
+                    </p>
+                    {c.requires_resolution ? (
+                      <p className="mt-1 text-xs font-semibold text-diriyah-red">
+                        Requires resolution · OPEN
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-text-muted">General note</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 
