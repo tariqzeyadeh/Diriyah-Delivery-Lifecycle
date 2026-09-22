@@ -26,7 +26,7 @@ function mysqlHostPort(): { host: string; port: number } | null {
   }
 }
 
-function tcpReachable(host: string, port: number, timeoutMs = 1500): Promise<boolean> {
+function tcpReachable(host: string, port: number, timeoutMs = 5000): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.connect({ host, port })
     const finish = (ok: boolean) => {

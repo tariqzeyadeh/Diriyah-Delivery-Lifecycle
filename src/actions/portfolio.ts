@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { getServerRole, getServerPersonaEmail } from '@/src/lib/auth/server-guard'
+import { isSsoAuthMode } from '@/src/lib/auth/session'
 import { firstDeleteBlock, isDraftStatus, type DeleteBlockCode } from '@/lib/atlas/record-delete'
 import { normalizeProcurementStage } from '@/lib/atlas/procurement'
 
@@ -11,19 +12,22 @@ const GLOBAL_ROLES = ['Strategy & Governance', 'CTO Office', 'PMO'] as const
 /**
  * Returns a Prisma `where` fragment to scope records to the caller's BU.
  * Global roles (Strategy & Governance, CTO Office, PMO) get no filter.
- * Business Owner / Commercial roles see only their own BU records.
+ * Demo personas are not business units, and create paths leave
+ * `owning_business_unit_id` null — filtering by email local-part hid every
+ * register row for Business Owner / Commercial even when MySQL had data.
  */
-async function buScopeWhere(): Promise<{ owning_business_unit_id?: string } | undefined> {
+async function buScopeWhere(): Promise<
+  { owning_business_unit_id?: string } | { OR: { owning_business_unit_id: string | null }[] } | undefined
+> {
   const role = await getServerRole()
   if (!role || GLOBAL_ROLES.includes(role as typeof GLOBAL_ROLES[number])) return undefined
-  // BU is encoded as the domain prefix of the email in demo mode
-  // e.g. ahmed.khalid@diriyah.sa → business_unit = 'ahmed.khalid'
-  // In production this would come from the JWT claim 'business_unit_id'.
-  // For the POC we use a stable mapping from persona email to BU.
+  if (!isSsoAuthMode()) return undefined
   const email = await getServerPersonaEmail()
   if (!email) return undefined
-  const buId = email.split('@')[0] // demo: persona id doubles as BU identifier
-  return { owning_business_unit_id: buId }
+  const buId = email.split('@')[0]
+  return {
+    OR: [{ owning_business_unit_id: buId }, { owning_business_unit_id: null }],
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
